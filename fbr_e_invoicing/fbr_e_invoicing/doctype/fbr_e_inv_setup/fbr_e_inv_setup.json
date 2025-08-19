@@ -6,7 +6,10 @@
  "engine": "InnoDB",
  "field_order": [
   "pral_authorization_token",
-  "api_endpoint"
+  "api_endpoint",
+  "column_break_kruy",
+  "pral_login_id",
+  "pral_login_password"
  ],
  "fields": [
   {
@@ -18,12 +21,26 @@
    "fieldname": "api_endpoint",
    "fieldtype": "Data",
    "label": "API endpoint"
+  },
+  {
+   "fieldname": "column_break_kruy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pral_login_id",
+   "fieldtype": "Data",
+   "label": "PRAL Login ID"
+  },
+  {
+   "fieldname": "pral_login_password",
+   "fieldtype": "Data",
+   "label": "PRAL Login Password"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-25 17:28:13.708579",
+ "modified": "2025-06-26 15:48:08.026013",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",

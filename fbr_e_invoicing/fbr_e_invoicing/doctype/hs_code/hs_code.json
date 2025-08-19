@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:code_number",
+ "creation": "2025-08-19 12:39:19.783186",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "code_number"
+ ],
+ "fields": [
+  {
+   "fieldname": "code_number",
+   "fieldtype": "Data",
+   "label": "Code Number",
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-19 12:40:02.179750",
+ "modified_by": "Administrator",
+ "module": "FBR E-Invoicing",
+ "name": "HS Code",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
