@@ -145,6 +145,13 @@ app_license = "mit"
 # 	}
 # }
 
+doc_events = {
+	"POS Invoice": {
+		"after_insert": "fbr_e_invoicing.api.pos_invoice_build_payload.get"
+	}
+}
+
+
 # Scheduled Tasks
 # ---------------
 
