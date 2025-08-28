@@ -1,16 +1,170 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2025-08-28 15:39:08.472896",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_kxv7"
+  "naming_series",
+  "document_section",
+  "document_type",
+  "document_name",
+  "fbr_invoice_number",
+  "column_break_doc",
+  "status",
+  "submitted_at",
+  "processing_time",
+  "request_section",
+  "request_payload",
+  "response_section",
+  "response_data",
+  "column_break_resp",
+  "response_status_code",
+  "validation_errors",
+  "additional_info_section",
+  "user_agent",
+  "ip_address",
+  "column_break_add",
+  "api_version",
+  "retry_attempt"
  ],
  "fields": [
   {
-   "fieldname": "section_break_kxv7",
-   "fieldtype": "Section Break"
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "FBR-LOG-.YYYY.-.MM.-.DD.-.#####.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "document_section",
+   "fieldtype": "Section Break",
+   "label": "Document Information"
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Type",
+   "options": "Sales Invoice\nPOS Invoice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "document_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Name",
+   "options": "document_type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fbr_invoice_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "FBR Invoice Number",
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_doc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Success\nInvalid\nError\nTimeout",
+   "reqd": 1
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Submitted At",
+   "reqd": 1,
+   "default": "Now"
+  },
+  {
+   "fieldname": "processing_time",
+   "fieldtype": "Float",
+   "label": "Processing Time (ms)",
+   "precision": 2
+  },
+  {
+   "fieldname": "request_section",
+   "fieldtype": "Section Break",
+   "label": "Request Payload",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "request_payload",
+   "fieldtype": "Code",
+   "label": "Request Payload",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_section",
+   "fieldtype": "Section Break",
+   "label": "Response Data",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "response_data",
+   "fieldtype": "Code",
+   "label": "Response Data",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_resp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_status_code",
+   "fieldtype": "Data",
+   "label": "HTTP Status Code"
+  },
+  {
+   "fieldname": "validation_errors",
+   "fieldtype": "Long Text",
+   "label": "Validation Errors"
+  },
+  {
+   "fieldname": "additional_info_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Information",
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.user_agent"
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Data",
+   "label": "User Agent"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address"
+  },
+  {
+   "fieldname": "column_break_add",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "api_version",
+   "fieldtype": "Data",
+   "label": "API Version"
+  },
+  {
+   "fieldname": "retry_attempt",
+   "fieldtype": "Int",
+   "label": "Retry Attempt",
+   "default": 0
   }
  ],
  "index_web_pages_for_search": 1,
@@ -19,6 +173,7 @@
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR Logs",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -36,5 +191,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "document_name",
+ "track_changes": 1
 }

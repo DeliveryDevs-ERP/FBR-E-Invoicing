@@ -1,24 +1,159 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2025-08-28 15:38:32.243160",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_6tpr"
+  "naming_series",
+  "document_section",
+  "document_type",
+  "document_name",
+  "priority",
+  "column_break_kshd",
+  "status",
+  "retry_count",
+  "max_retries",
+  "details_section",
+  "error_message",
+  "column_break_gher",
+  "fbr_response",
+  "timestamps_section",
+  "created_at",
+  "last_retry_at",
+  "column_break_time",
+  "completed_at",
+  "next_retry_at"
  ],
  "fields": [
   {
-   "fieldname": "section_break_6tpr",
-   "fieldtype": "Section Break"
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "FBR-QUEUE-.YYYY.-.MM.-.DD.-.#####.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "document_section",
+   "fieldtype": "Section Break",
+   "label": "Document Information"
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Type",
+   "options": "Sales Invoice\nPOS Invoice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "document_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Name",
+   "options": "document_type",
+   "reqd": 1
+  },
+  {
+   "default": "5",
+   "description": "1 = Highest, 10 = Lowest",
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority"
+  },
+  {
+   "fieldname": "column_break_kshd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nProcessing\nCompleted\nFailed",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "label": "Retry Count",
+   "read_only": 1
+  },
+  {
+   "default": "25",
+   "fieldname": "max_retries",
+   "fieldtype": "Int",
+   "label": "Max Retries"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Error Details"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Long Text",
+   "label": "Error Message"
+  },
+  {
+   "fieldname": "column_break_gher",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fbr_response",
+   "fieldtype": "Long Text",
+   "label": "FBR Response",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timestamps_section",
+   "fieldtype": "Section Break",
+   "label": "Timestamps"
+  },
+  {
+   "default": "Now",
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Created At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_retry_at",
+   "fieldtype": "Datetime",
+   "label": "Last Retry At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_time",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_retry_at",
+   "fieldtype": "Datetime",
+   "label": "Next Retry At",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-28 15:38:32.243160",
+ "modified": "2025-08-28 15:57:13.128609",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR Queue",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -36,5 +171,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "document_name",
+ "track_changes": 1
 }
