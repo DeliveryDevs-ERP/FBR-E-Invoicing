@@ -5,247 +5,168 @@ app_description = "FBR Digital invoicing integration"
 app_email = "osama.ahmed@deliverydevs.com"
 app_license = "mit"
 
-# Apps
-# ------------------
-
-# required_apps = []
-
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "fbr_e_invoicing",
-# 		"logo": "/assets/fbr_e_invoicing/logo.png",
-# 		"title": "FBR E-Invoicing",
-# 		"route": "/fbr_e_invoicing",
-# 		"has_permission": "fbr_e_invoicing.api.permission.has_app_permission"
-# 	}
-# ]
-
-# Includes in <head>
-# ------------------
-
-# include js, css files in header of desk.html
-# app_include_css = "/assets/fbr_e_invoicing/css/fbr_e_invoicing.css"
-# app_include_js = "/assets/fbr_e_invoicing/js/fbr_e_invoicing.js"
-
-# include js, css files in header of web template
-# web_include_css = "/assets/fbr_e_invoicing/css/fbr_e_invoicing.css"
-# web_include_js = "/assets/fbr_e_invoicing/js/fbr_e_invoicing.js"
-
-# include custom scss in every website theme (without file extension ".scss")
-# website_theme_scss = "fbr_e_invoicing/public/scss/website"
-
-# include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
-# webform_include_css = {"doctype": "public/css/doctype.css"}
-
-# include js in page
-# page_js = {"page" : "public/js/file.js"}
-
-# include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
-
-# Svg Icons
-# ------------------
-# include app icons in desk
-# app_include_icons = "fbr_e_invoicing/public/icons.svg"
-
-# Home Pages
-# ----------
-
-# application home page (will override Website Settings)
-# home_page = "login"
-
-# website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
-
-# Generators
-# ----------
-
-# automatically create page for each record of this doctype
-# website_generators = ["Web Page"]
-
-# Jinja
-# ----------
-
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "fbr_e_invoicing.utils.jinja_methods",
-# 	"filters": "fbr_e_invoicing.utils.jinja_filters"
-# }
-
-# Installation
-# ------------
-
-# before_install = "fbr_e_invoicing.install.before_install"
-# after_install = "fbr_e_invoicing.install.after_install"
-
-# Uninstallation
-# ------------
-
-# before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
-# after_uninstall = "fbr_e_invoicing.uninstall.after_uninstall"
-
-# Integration Setup
-# ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
-
-# before_app_install = "fbr_e_invoicing.utils.before_app_install"
-# after_app_install = "fbr_e_invoicing.utils.after_app_install"
-
-# Integration Cleanup
-# -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
-
-# before_app_uninstall = "fbr_e_invoicing.utils.before_app_uninstall"
-# after_app_uninstall = "fbr_e_invoicing.utils.after_app_uninstall"
-
-# Desk Notifications
-# ------------------
-# See frappe.core.notifications.get_notification_config
-
-# notification_config = "fbr_e_invoicing.notifications.get_notification_config"
-
-# Permissions
-# -----------
-# Permissions evaluated in scripted ways
-
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
-
-# DocType Class
-# ---------------
-# Override standard doctype classes
-
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
-
 # Document Events
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
-
 doc_events = {
 	"POS Invoice": {
 		"after_insert": "fbr_e_invoicing.api.pos_invoice_build_payload.get"
+	},
+	"Sales Invoice": {
+		"validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields"
 	}
 }
-
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"fbr_e_invoicing.tasks.all"
-# 	],
-# 	"daily": [
-# 		"fbr_e_invoicing.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"fbr_e_invoicing.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"fbr_e_invoicing.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"fbr_e_invoicing.tasks.monthly"
-# 	],
+scheduler_events = {
+	# Process FBR queue every 15 minutes
+	"cron": {
+		"*/15 * * * *": [
+			"fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"
+		]
+	},
+	# Cleanup old logs and queue items daily at 2 AM
+	# "daily": [
+	# 	"fbr_e_invoicing.api.fbr_maintenance.cleanup_old_records"
+	# ],
+	# Generate FBR reports weekly
+	# "weekly": [
+	# 	"fbr_e_invoicing.api.fbr_reports.generate_weekly_report"
+	# ]
+}
+
+# Custom permissions for FBR related doctypes
+# permission_query_conditions = {
+# 	"FBR Queue": "fbr_e_invoicing.api.permissions.get_fbr_queue_permission_query_conditions",
+# 	"FBR Logs": "fbr_e_invoicing.api.permissions.get_fbr_logs_permission_query_conditions",
 # }
 
-# Testing
-# -------
 
-# before_tests = "fbr_e_invoicing.install.before_tests"
+# Website Settings
+# website_route_rules = [
+# 	{"from_route": "/fbr-dashboard", "to_route": "fbr-dashboard"},
+# ]
 
-# Overriding Methods
-# ------------------------------
-#
+# Jinja Environment
+# jinja = {
+# 	"methods": [
+# 		"fbr_e_invoicing.utils.jinja_methods.get_fbr_status",
+# 		"fbr_e_invoicing.utils.jinja_methods.format_fbr_datetime"
+# 	],
+# 	"filters": [
+# 		"fbr_e_invoicing.utils.jinja_filters.fbr_status_color"
+# 	]
+# }
+
+# Background Jobs
+# ---------------
+
+# Override standard ERPNext methods for FBR integration
 # override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "fbr_e_invoicing.event.get_events"
-# }
-#
-# each overriding function accepts a `data` argument;
-# generated from the base implementation of the doctype dashboard,
-# along with any modifications made in other Frappe apps
-# override_doctype_dashboards = {
-# 	"Task": "fbr_e_invoicing.task.get_dashboard_data"
+# 	"erpnext.accounts.doctype.sales_invoice.sales_invoice.make_sales_return": "fbr_e_invoicing.overrides.sales_invoice.make_sales_return_with_fbr"
 # }
 
-# exempt linked doctypes from being automatically cancelled
-#
-# auto_cancel_exempted_doctypes = ["Auto Repeat"]
+# REST API endpoints
+# ------------------
 
-# Ignore links to specified DocTypes when deleting documents
-# -----------------------------------------------------------
+# Add custom REST API endpoints
+# website_generators = ["FBR Dashboard"]
 
-# ignore_links_on_delete = ["Communication", "ToDo"]
+# Boot session - additional info sent to client
+# extend_bootinfo = [
+# 	"fbr_e_invoicing.boot.boot_session"
+# ]
 
-# Request Events
-# ----------------
-# before_request = ["fbr_e_invoicing.utils.before_request"]
-# after_request = ["fbr_e_invoicing.utils.after_request"]
+# Custom fields that should be searchable
+search_fields = {
+	"Sales Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
+	"POS Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"]
+}
 
-# Job Events
-# ----------
-# before_job = ["fbr_e_invoicing.utils.before_job"]
-# after_job = ["fbr_e_invoicing.utils.after_job"]
+# Dashboard charts for Desk
+dashboard_charts = [
+	{
+		"chart_name": "FBR Submissions",
+		"chart_type": "Line",
+		"doctype": "FBR Logs",
+		"filters_json": '{"status": "Success"}',
+		"source": "FBR Logs"
+	},
+	{
+		"chart_name": "FBR Queue Status",
+		"chart_type": "Donut",
+		"doctype": "FBR Queue",
+		"source": "FBR Queue"
+	}
+]
+
+# Notifications
+# --------------
+
+# notification_config = "fbr_e_invoicing.notifications.get_notification_config"
+
+# Email templates
+# ---------------
+
+# standard_email_templates = [
+# 	{
+# 		"template_name": "FBR Submission Failed",
+# 		"doctype": "Sales Invoice",
+# 		"subject": "FBR Submission Failed for {{ doc.name }}",
+# 		"response": """
+# 		<p>Dear {{ frappe.get_fullname(frappe.session.user) }},</p>
+# 		<p>The FBR submission for {{ doc.doctype }} {{ doc.name }} has failed.</p>
+# 		<p><strong>Error:</strong> {{ doc.custom_fbr_last_error }}</p>
+# 		<p>Please review and retry the submission.</p>
+# 		<p>Best regards,<br>Frappe FBR E-Invoicing System</p>
+# 		"""
+# 	}
+# ]
+
+# Print Formats
+# --------------
+
+# Custom print format for FBR invoices
+# default_print_formats = {
+# 	"Sales Invoice": "FBR Sales Invoice",
+# 	"POS Invoice": "FBR POS Invoice"
+# }
+
+# Desk notifications for failed FBR submissions
+# notification_config = "fbr_e_invoicing.notifications.get_notification_config"
+
+# On app install/uninstall
+# -------------------------
+
+# after_install = "fbr_e_invoicing.install.after_install"
+# before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
+
+# Backup hook - include FBR data in backups
+include_in_backup = ["FBR Logs", "FBR Queue"]
 
 # User Data Protection
 # --------------------
 
 # user_data_fields = [
 # 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
+# 		"doctype": "FBR Logs",
+# 		"filter_by": "owner",
+# 		"redact_fields": ["request_payload", "response_data"],
 # 		"partial": 1,
 # 	},
 # 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
+# 		"doctype": "FBR Queue", 
+# 		"filter_by": "owner",
+# 		"redact_fields": ["error_message", "fbr_response"],
 # 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
 # 	}
 # ]
 
-# Authentication and authorization
-# --------------------------------
-
-# auth_hooks = [
-# 	"fbr_e_invoicing.auth.validate"
-# ]
-
-# Automatically update python controller files with type annotations for this app.
-# export_python_type_annotations = True
-
+# Default log clearing - keep FBR logs for 90 days
 # default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
+# 	"FBR Logs": 90,
+# 	"FBR Queue": 30  # Completed items
 # }
-
