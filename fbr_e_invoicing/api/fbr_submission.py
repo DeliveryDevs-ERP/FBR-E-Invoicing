@@ -64,7 +64,7 @@ def bulk_submit_invoices(doctype, docnames):
             queue_doc.insert(ignore_permissions=True)
             
             # Update document status
-            doc.db_set("custom_fbr_queue_status", "Queued")
+            # doc.db_set("custom_fbr_queue_status", "Queued")
             
             queued_count += 1
             
