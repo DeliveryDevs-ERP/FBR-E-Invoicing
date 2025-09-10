@@ -139,7 +139,7 @@ def process_queue_item(queue_item):
             doc.custom_fbr_datetime = response.get("dated", "")
             doc.custom_fbr_status = response.get("validationResponse", {}).get("status", "")
         
-        doc.custom_fbr_queue_status = "Completed"
+        # doc.custom_fbr_queue_status = "Completed"
         doc.save(ignore_permissions=True)
         
         # Check if submission was successful
