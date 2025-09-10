@@ -450,5 +450,6 @@
   }
  ],
 "doctype": "Sales Invoice",
- "sync_on_migrate": 1
+ "sync_on_migrate": 1,
+ "property_setters": []
 }
