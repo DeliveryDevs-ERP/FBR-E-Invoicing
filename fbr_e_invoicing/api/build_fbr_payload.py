@@ -60,7 +60,7 @@ def build_fbr_payload(sales_invoice_name: str):
             "sroScheduleNo": "", 
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
-            "saleType": "Goods at standard rate (default)",
+            "saleType": "Sale of Services",
             "sroItemSerialNo": ""
         }
         payload["items"].append(item_entry)

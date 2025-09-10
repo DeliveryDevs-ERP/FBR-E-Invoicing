@@ -3,71 +3,50 @@ from frappe.utils import flt, formatdate
 
 @frappe.whitelist()
 def post(sales_invoice_name: str):
-    # """
-    # Build FBR payload for a Sales Invoice per provided mapping.
-    # Returns a dict (JSON-serializable).
-    # """
-    # doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
+     """
+    Build FBR payload for a Sales Invoice per provided mapping.
+    Returns a dict (JSON-serializable).
+    """
+    doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
 
-    # # --- Party helpers ---
-    # seller_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
-    # seller_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
-    # seller_province = doc.tax_category
-    # seller_address = _get_party_address_text('Customer', doc.customer)
-    # invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
-    # buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    # buyer_name = doc.company
-    # buyer_province = doc.custom_province
-    # buyer_address = _get_party_address_text('Company', doc.company)
-    # buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
+    # --- Party helpers ---
+    seller_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
+    seller_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
+    seller_province = doc.tax_category
+    seller_address = _get_party_address_text('Customer', doc.customer)
+    invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
+    buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
+    buyer_name = doc.company
+    buyer_province = doc.custom_province
+    buyer_address = _get_party_address_text('Company', doc.company)
+    buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
 
-    # --- Invoice-level fields ---
-    payload = {
-        "invoiceNumber": "7000007DI1747119701593",
-        "dated": "2025-05-13 12:01:41",
-        "validationResponse": {
-        "statusCode": "00",
-        "status": "Valid",
-        "error": "",
-        "invoiceStatuses": [
-                 {
-                    "itemSNo": "1",
-                    "statusCode": "00",
-                    "status": "Valid",
-                    "invoiceNo": "7000007DI1747119701593-1",
-                    "errorCode": "",
-                    "error": ""
-                 }
-            ]
-         }
-    } 
+    # --- Items mapping ---
+    for row in (doc.items or []):
+        tax_rate = _first_item_tax_rate(row.item_tax_template)
+        value_excl_st = flt(row.rate)  # as requested: use unit rate as valueSalesExcludingST
+        sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
 
-    # # --- Items mapping ---
-    # for row in (doc.items or []):
-    #     tax_rate = _first_item_tax_rate(row.item_tax_template)
-    #     value_excl_st = flt(row.rate)  # as requested: use unit rate as valueSalesExcludingST
-    #     sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
-
-    #     item_entry = {
-    #         "hsCode": (row.custom_hs_code or ""),
-    #         "productDescription": (row.description or row.item_name or ""),
-    #         "rate": f"{flt(tax_rate)}%",
-    #         "uoM": (row.uom or ""),
-    #         "quantity": flt(row.qty),
-    #         "totalValues": 0.00,
-    #         "valueSalesExcludingST": value_excl_st,
-    #         "fixedNotifiedValueOrRetailPrice": 0.00,
-    #         "salesTaxApplicable": sales_tax_applicable,
-    #         "salesTaxWithheldAtSource": 0.00,
-    #         "extraTax": 0.00,
-    #         "furtherTax": 0.00,
-    #         "sroScheduleNo": "", 
-    #         "fedPayable": 0.00,
-    #         "discount": abs(flt(row.discount_amount or 0.0)),
-    #         "saleType": "Goods at standard rate (default)",
-    #         "sroItemSerialNo": ""
-    #     }
-    #     payload["items"].append(item_entry)
+        item_entry = {
+            "hsCode": (row.custom_hs_code or ""),
+            "productDescription": (row.description or row.item_name or ""),
+            "rate": f"{flt(tax_rate)}%",
+            "uoM": (row.uom or ""),
+            "quantity": flt(row.qty),
+            "totalValues": 0.00,
+            "valueSalesExcludingST": value_excl_st,
+            "fixedNotifiedValueOrRetailPrice": 0.00,
+            "salesTaxApplicable": sales_tax_applicable,
+            "salesTaxWithheldAtSource": 0.00,
+            "extraTax": 0.00,
+            "furtherTax": 0.00,
+            "sroScheduleNo": "", 
+            "fedPayable": 0.00,
+            "discount": abs(flt(row.discount_amount or 0.0)),
+            "saleType": "Sale of Services",
+            "sroItemSerialNo": ""
+        }
+        payload["items"].append(item_entry)
 
     return payload
 
