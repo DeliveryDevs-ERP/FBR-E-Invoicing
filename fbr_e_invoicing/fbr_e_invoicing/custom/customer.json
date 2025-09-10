@@ -65,5 +65,7 @@
    "width": null
   }
  ],
- "sync_on_migrate": 1
+  "doctype": "Customer",
+ "sync_on_migrate": 1,
+  "property_setters": []
 }
