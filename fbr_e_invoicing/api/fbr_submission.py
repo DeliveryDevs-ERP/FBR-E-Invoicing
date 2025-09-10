@@ -94,32 +94,10 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
         
         # For now, return a mock response since we don't have the actual FBR API endpoint
         # In production, replace this with actual API call:
-        # response = requests.post(fbr_settings.api_endpoint, json=payload, headers=headers, timeout=30)
-        # response.raise_for_status()
-        # return response.json()
+        response = requests.post(fbr_settings.api_endpoint, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
         
-        # Mock response for development
-        mock_response = {
-            "invoiceNumber": f"FBR{document_name}{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            "dated": now(),
-            "validationResponse": {
-                "statusCode": "00",
-                "status": "Valid" if not is_retry else "Invalid",
-                "error": "" if not is_retry else "Sample validation error",
-                "invoiceStatuses": [
-                    {
-                        "itemSNo": "1",
-                        "statusCode": "00",
-                        "status": "Valid" if not is_retry else "Invalid",
-                        "invoiceNo": f"FBR{document_name}-1",
-                        "errorCode": "" if not is_retry else "E001",
-                        "error": "" if not is_retry else "Sample item error"
-                    }
-                ]
-            }
-        }
-        
-        return mock_response
+        return response.json()
         
     except requests.exceptions.RequestException as e:
         frappe.throw(f"FBR API request failed: {str(e)}")
