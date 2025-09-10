@@ -449,5 +449,6 @@
    "width": null
   }
  ],
+"doctype": "POS Invoice",
  "sync_on_migrate": 1
 }
