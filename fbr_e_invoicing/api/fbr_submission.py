@@ -78,29 +78,70 @@ def bulk_submit_invoices(doctype, docnames):
     return {"queued_count": queued_count}
 
 def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
-    """Submit payload to FBR API"""
+    """Submit payload to FBR API via HTTP POST and return parsed JSON dict.
+
+    Raises frappe.ValidationError (frappe.throw) with a readable message on failures.
+    """
+    import requests
+    from requests.exceptions import RequestException, Timeout, HTTPError
+    import json as _json
+
+    fbr_settings = frappe.get_single("FBR E-Inv Setup")
+    api_endpoint = (fbr_settings.api_endpoint or "").strip()
+    token = (fbr_settings.pral_authorization_token or "").strip()
+
+    if not api_endpoint or not token:
+        frappe.throw("FBR API settings not configured. Please set API Endpoint and Authorization Token in 'FBR E-Inv Setup'.")
+
+    verify_ssl = getattr(fbr_settings, "verify_ssl", True)
+    connect_timeout = float(getattr(fbr_settings, "connect_timeout", 10.0))
+    read_timeout = float(getattr(fbr_settings, "read_timeout", 30.0))
+    timeout = (connect_timeout, read_timeout)
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "X-Document-Name": str(document_name),
+        "X-Document-Type": str(document_type),
+        "X-Client": "ERPNext FBR E-Invoicing",
+        "X-Retry": "1" if is_retry else "0",
+    }
+
     try:
-        # Get FBR settings
-        fbr_settings = frappe.get_single("FBR E-Inv Setup")
-        
-        if not fbr_settings.api_endpoint or not fbr_settings.pral_authorization_token:
-            frappe.throw("FBR API settings not configured. Please check FBR E-Inv Setup.")
-        
-        # Prepare headers
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {fbr_settings.pral_authorization_token}"
-        }
-        
-        # For now, return a mock response since we don't have the actual FBR API endpoint
-        # In production, replace this with actual API call:
-        response = requests.post(fbr_settings.api_endpoint, json=payload, headers=headers, timeout=30)
-        response.raise_for_status()
-        
-        return response.json()
-        
-    except requests.exceptions.RequestException as e:
-        frappe.throw(f"FBR API request failed: {str(e)}")
+        resp = requests.post(
+            api_endpoint,
+            json=payload,
+            headers=headers,
+            timeout=timeout,
+            verify=bool(verify_ssl),
+        )
+
+        text = resp.text or ""
+        try:
+            data = resp.json() if text else {}
+        except ValueError:
+            data = {"raw": text}  
+
+        try:
+            resp.raise_for_status()
+        except HTTPError as http_err:
+            err_msg = None
+            if isinstance(data, dict):
+                err_msg = (
+                    data.get("message")
+                    or data.get("error")
+                    or data.get("validationResponse", {}).get("error")
+                    or data.get("validationResponse", {}).get("status")
+                )
+            status_line = f"HTTP {resp.status_code}"
+            details = f" | Details: {err_msg}" if err_msg else (f" | Body: {text[:500]}" if text else "")
+            frappe.throw(f"FBR API error {status_line}{details}")
+
+        if not isinstance(data, dict):
+            data = {"result": "success", "raw": text}
+
+        return data
+    
     except Exception as e:
         frappe.throw(f"FBR submission error: {str(e)}")
 

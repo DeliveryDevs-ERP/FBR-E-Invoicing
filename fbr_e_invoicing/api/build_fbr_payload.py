@@ -10,15 +10,16 @@ def build_fbr_payload(sales_invoice_name: str):
     doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
 
     # --- Party helpers ---
-    seller_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
-    seller_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
-    seller_province = doc.tax_category
-    seller_address = _get_party_address_text('Customer', doc.customer)
+    buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
+    buyer_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
+    buyer_province = doc.tax_category
+    buyer_address = _get_party_address_text('Customer', doc.customer)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
-    buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    buyer_name = doc.company
-    buyer_province = doc.custom_province
-    buyer_address = _get_party_address_text('Company', doc.company)
+    seller_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
+    # seller_name = doc.company # should be same as fbr name 'FALCON-I PRIVATE LIMITED'
+    seller_name = "FALCON-I PRIVATE LIMITED"
+    seller_province = doc.custom_province
+    seller_address = _get_party_address_text('Company', doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
 
     # --- Invoice-level fields ---
@@ -35,6 +36,7 @@ def build_fbr_payload(sales_invoice_name: str):
         "buyerAddress": (buyer_address or ""),
         "buyerRegistrationType": buyer_registration_type,
         "invoiceRefNo": "",
+        "scenarioId" : "SN018",
         "items": []
     }
 
@@ -47,8 +49,8 @@ def build_fbr_payload(sales_invoice_name: str):
         item_entry = {
             "hsCode": (row.custom_hs_code or ""),
             "productDescription": (row.description or row.item_name or ""),
-            "rate": f"{flt(tax_rate)}%",
-            "uoM": (row.uom or ""),
+            "rate": format_rate(tax_rate),
+            "uoM": (row.stock_uom or ""),
             "quantity": flt(row.qty),
             "totalValues": 0.00,
             "valueSalesExcludingST": value_excl_st,
@@ -60,14 +62,22 @@ def build_fbr_payload(sales_invoice_name: str):
             "sroScheduleNo": "", 
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
-            "saleType": "Sale of Services",
+            "saleType": (row.custom_sale_type or ""),
             "sroItemSerialNo": ""
         }
         payload["items"].append(item_entry)
 
     return payload
 
-
+def format_rate(tax_rate):
+    value = flt(tax_rate)
+    # If the number is a whole number (e.g. 18.0), format without decimals
+    if value.is_integer():
+        return f"{int(value)}%"
+    else:
+        return f"{value}%"
+    
+    
 def _get_party_address_text(link_doctype: str, link_name: str) -> str:
     """
     Find Address via Dynamic Link child table:
