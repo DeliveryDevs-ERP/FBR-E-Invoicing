@@ -28,22 +28,22 @@ def build_fbr_payload(sales_invoice_name: str):
         "invoiceDate": formatdate(doc.posting_date, "yyyy-mm-dd"),
         "sellerNTNCNIC": (seller_tax_id or ""),
         "sellerBusinessName": (seller_name or ""),
-        "sellerProvince": (seller_province or ""),
+        "sellerProvince": (buyer_province or ""),
         "sellerAddress": (seller_address or ""),
         "buyerNTNCNIC": (buyer_tax_id or ""),
         "buyerBusinessName": (buyer_name or ""),
-        "buyerProvince": (buyer_province or ""),
+        "buyerProvince": (seller_province or ""),
         "buyerAddress": (buyer_address or ""),
         "buyerRegistrationType": buyer_registration_type,
         "invoiceRefNo": "",
-        "scenarioId" : "SN018",
+        "scenarioId": get_scenario_id(doc.items[0].custom_sale_type),
         "items": []
     }
 
     # --- Items mapping ---
     for row in (doc.items or []):
         tax_rate = _first_item_tax_rate(row.item_tax_template)
-        value_excl_st = flt(row.rate)  # as requested: use unit rate as valueSalesExcludingST
+        value_excl_st = flt(row.rate)
         sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
 
         item_entry = {
@@ -77,7 +77,27 @@ def format_rate(tax_rate):
     else:
         return f"{value}%"
     
-    
+
+def get_scenario_id(sale_type: str) -> str:
+    """
+    Fetch scenario_id from FBR Sale Type doctype
+    based on the given sale_type.
+    Returns empty string if not found.
+    """
+    if not sale_type:
+        return ""
+
+    try:
+        scenario_id = frappe.db.get_value(
+            "FBR Sale Type",   # Doctype name
+            {"name": sale_type},   # or use {"sale_type": sale_type} if field differs
+            "scenario_id"
+        )
+        return scenario_id or ""
+    except Exception:
+        return ""
+
+  
 def _get_party_address_text(link_doctype: str, link_name: str) -> str:
     """
     Find Address via Dynamic Link child table:

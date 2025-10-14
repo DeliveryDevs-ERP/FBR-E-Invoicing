@@ -241,3 +241,11 @@ def get_fbr_compliance_report(from_date=None, to_date=None):
         return {
             "error": str(e)
         }
+
+from frappe.utils import nowdate, now_datetime
+def force_today_posting_date(doc, method):
+    """Force posting_date/time to 'today' at submit time."""
+    doc.set_posting_time = 1
+    doc.posting_date = nowdate()
+    if hasattr(doc, "posting_time"):
+        doc.posting_time = now_datetime().time()
