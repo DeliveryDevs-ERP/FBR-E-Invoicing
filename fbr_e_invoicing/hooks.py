@@ -14,7 +14,8 @@ doc_events = {
 		"after_insert": "fbr_e_invoicing.api.pos_invoice_build_payload.get"
 	},
 	"Sales Invoice": {
-		"validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields"
+		"validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
+		"before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date"
 	}
 }
 
