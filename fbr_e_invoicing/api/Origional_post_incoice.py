@@ -1,20 +1,6 @@
 import frappe
 from frappe.utils import flt, formatdate
 
-
-def normalise_cnic(value: str | None) -> str:
-    """
-    Normalize CNIC/NTN/Tax IDs by removing non-digits (hyphens, spaces, etc.)
-    Examples:
-      "31303-9589654-7" -> "3130395896547"
-      " 31303 9589654 7 " -> "3130395896547"
-    """
-    if not value:
-        return ""
-    return re.sub(r"\D", "", str(value)).strip()
-
-
-
 @frappe.whitelist()
 def post(sales_invoice_name: str):
      """
@@ -24,21 +10,15 @@ def post(sales_invoice_name: str):
     doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
 
     # --- Party helpers ---
-    seller_tax_id = frappe.db.get_value('Company', doc.customer, 'tax_id') if doc.customer else None
-    seller_name = frappe.db.get_value('Company', doc.customer, 'name') if doc.customer else None
-    seller_province = doc.custom_province
-    seller_address = _get_party_address_text('Company', doc.customer)
+    seller_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
+    seller_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
+    seller_province = doc.tax_category
+    seller_address = _get_party_address_text('Customer', doc.customer)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
-    # buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    if frappe.db.get_value('Customer', doc.customer, 'tax_id'):
-        buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
-    elif doc.nic:
-        buyer_tax_id = normalise_cnic(doc.nic)
-    elif doc.ntn:
-        buyer_tax_id = doc.ntn
-    buyer_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
-    buyer_province = doc.tax_category
-    buyer_address = _get_party_address_text('Customer', doc.company)
+    buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
+    buyer_name = doc.company
+    buyer_province = doc.custom_province
+    buyer_address = _get_party_address_text('Company', doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
 
     # --- Items mapping ---

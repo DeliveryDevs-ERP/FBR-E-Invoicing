@@ -1,57 +1,56 @@
 import frappe
 from frappe.utils import flt, formatdate
 
-
-def normalise_cnic(value: str | None) -> str:
-    """
-    Normalize CNIC/NTN/Tax IDs by removing non-digits (hyphens, spaces, etc.)
-    Examples:
-      "31303-9589654-7" -> "3130395896547"
-      " 31303 9589654 7 " -> "3130395896547"
-    """
-    if not value:
-        return ""
-    return re.sub(r"\D", "", str(value)).strip()
-
-
-
 @frappe.whitelist()
-def post(sales_invoice_name: str):
-     """
+def build_fbr_payload(sales_invoice_name: str):
+    """
     Build FBR payload for a Sales Invoice per provided mapping.
     Returns a dict (JSON-serializable).
     """
     doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
 
     # --- Party helpers ---
-    seller_tax_id = frappe.db.get_value('Company', doc.customer, 'tax_id') if doc.customer else None
-    seller_name = frappe.db.get_value('Company', doc.customer, 'name') if doc.customer else None
-    seller_province = doc.custom_province
-    seller_address = _get_party_address_text('Company', doc.customer)
-    invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
-    # buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    if frappe.db.get_value('Customer', doc.customer, 'tax_id'):
-        buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
-    elif doc.nic:
-        buyer_tax_id = normalise_cnic(doc.nic)
-    elif doc.ntn:
-        buyer_tax_id = doc.ntn
+    buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
     buyer_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
     buyer_province = doc.tax_category
-    buyer_address = _get_party_address_text('Customer', doc.company)
+    buyer_address = _get_party_address_text('Customer', doc.customer)
+    invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
+    seller_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
+    # seller_name = doc.company # should be same as fbr name 'FALCON-I PRIVATE LIMITED'
+    seller_name = "FALCON-I PRIVATE LIMITED"
+    seller_province = doc.custom_province
+    seller_address = _get_party_address_text('Company', doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
+
+    # --- Invoice-level fields ---
+    payload = {
+        "invoiceType": invoice_type,
+        "invoiceDate": formatdate(doc.posting_date, "yyyy-mm-dd"),
+        "sellerNTNCNIC": (seller_tax_id or ""),
+        "sellerBusinessName": (seller_name or ""),
+        "sellerProvince": (buyer_province or ""),
+        "sellerAddress": (seller_address or ""),
+        "buyerNTNCNIC": (buyer_tax_id or ""),
+        "buyerBusinessName": (buyer_name or ""),
+        "buyerProvince": (seller_province or ""),
+        "buyerAddress": (buyer_address or ""),
+        "buyerRegistrationType": buyer_registration_type,
+        "invoiceRefNo": "",
+        "scenarioId": get_scenario_id(doc.items[0].custom_sale_type),
+        "items": []
+    }
 
     # --- Items mapping ---
     for row in (doc.items or []):
         tax_rate = _first_item_tax_rate(row.item_tax_template)
-        value_excl_st = flt(row.rate)  # as requested: use unit rate as valueSalesExcludingST
+        value_excl_st = flt(row.rate)
         sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
 
         item_entry = {
             "hsCode": (row.custom_hs_code or ""),
             "productDescription": (row.description or row.item_name or ""),
-            "rate": f"{flt(tax_rate)}%",
-            "uoM": (row.uom or ""),
+            "rate": format_rate(tax_rate),
+            "uoM": (row.stock_uom or ""),
             "quantity": flt(row.qty),
             "totalValues": 0.00,
             "valueSalesExcludingST": value_excl_st,
@@ -63,14 +62,42 @@ def post(sales_invoice_name: str):
             "sroScheduleNo": "", 
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
-            "saleType": "Sale of Services",
+            "saleType": (row.custom_sale_type or ""),
             "sroItemSerialNo": ""
         }
         payload["items"].append(item_entry)
 
     return payload
 
+def format_rate(tax_rate):
+    value = flt(tax_rate)
+    # If the number is a whole number (e.g. 18.0), format without decimals
+    if value.is_integer():
+        return f"{int(value)}%"
+    else:
+        return f"{value}%"
+    
 
+def get_scenario_id(sale_type: str) -> str:
+    """
+    Fetch scenario_id from FBR Sale Type doctype
+    based on the given sale_type.
+    Returns empty string if not found.
+    """
+    if not sale_type:
+        return ""
+
+    try:
+        scenario_id = frappe.db.get_value(
+            "FBR Sale Type",   # Doctype name
+            {"name": sale_type},   # or use {"sale_type": sale_type} if field differs
+            "scenario_id"
+        )
+        return scenario_id or ""
+    except Exception:
+        return ""
+
+  
 def _get_party_address_text(link_doctype: str, link_name: str) -> str:
     """
     Find Address via Dynamic Link child table:

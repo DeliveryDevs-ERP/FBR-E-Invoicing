@@ -142,7 +142,7 @@ dashboard_charts = [
 # On app install/uninstall
 # -------------------------
 
-# after_install = "fbr_e_invoicing.install.after_install"
+after_install = "fbr_e_invoicing.install.after_install"
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
 # Backup hook - include FBR data in backups
@@ -171,3 +171,7 @@ include_in_backup = ["FBR Logs", "FBR Queue"]
 # 	"FBR Logs": 90,
 # 	"FBR Queue": 30  # Completed items
 # }
+
+fixtures = [
+    {"dt": "Tax Category"}, 
+]
