@@ -15,21 +15,21 @@ def validate_fbr_fields(doc, method):
         errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
     
     # Validate posting date (should be current date for FBR)
-    # if doc.docstatus == 0:  # Only validate for draft documents
-    #     today = frappe.utils.getdate()
-    #     if doc.posting_date != today:
-    #         frappe.msgprint(
-    #             _("Warning: FBR requires posting date to be current date ({0}) for successful submission").format(today),
-    #             alert=True,
-    #             indicator='orange'
-    #         )
+    if doc.docstatus == 0:  # Only validate for draft documents
+        today = frappe.utils.getdate()
+        if doc.posting_date != today:
+            frappe.msgprint(
+                _("Warning: FBR requires posting date to be current date ({0}) for successful submission").format(today),
+                alert=True,
+                indicator='orange'
+            )
     
     # Check required FBR fields
     if not doc.custom_province:
-        errors.append(_("Seller Province is required for FBR submission"))
+        errors.append(_("Buyer Province is required for FBR submission"))
     
     if not doc.tax_category:
-        errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
+        errors.append(_("Tax Category (Seller Province) is required for FBR submission"))
     
     # Validate customer tax information
     if doc.customer:

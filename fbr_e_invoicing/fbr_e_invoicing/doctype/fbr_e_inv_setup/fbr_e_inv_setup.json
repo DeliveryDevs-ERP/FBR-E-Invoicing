@@ -29,18 +29,20 @@
   {
    "fieldname": "pral_login_id",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "PRAL Login ID"
   },
   {
    "fieldname": "pral_login_password",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "PRAL Login Password"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-26 15:48:08.026013",
+ "modified": "2025-10-21 14:33:39.862076",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",

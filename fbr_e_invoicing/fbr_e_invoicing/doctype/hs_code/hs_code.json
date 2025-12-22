@@ -6,7 +6,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "code_number"
+  "code_number",
+  "description"
  ],
  "fields": [
   {
@@ -14,11 +15,18 @@
    "fieldtype": "Data",
    "label": "Code Number",
    "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Description"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-19 12:40:02.179750",
+ "modified": "2025-11-23 09:12:49.368282",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "HS Code",

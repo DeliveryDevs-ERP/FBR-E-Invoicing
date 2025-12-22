@@ -1,0 +1,58 @@
+[
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2023-09-22 16:27:07.707910",
+  "name": "PUNJAB",
+  "title": "PUNJAB"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2023-09-22 16:27:16.880805",
+  "name": "KYBER PAKHTUNKHWA",
+  "title": "KYBER PAKHTUNKHWA"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2023-09-22 16:27:23.792067",
+  "name": "BALOCHISTAN",
+  "title": "BALOCHISTAN"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2025-09-12 15:27:51.528077",
+  "name": "GILGIT BALTISTAN",
+  "title": "GILGIT BALTISTAN"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2025-09-12 15:28:04.890321",
+  "name": "AZAD JAMMU AND KASHMIR",
+  "title": "AZAD JAMMU AND KASHMIR"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2023-09-22 16:27:28.709763",
+  "name": "CAPITAL TERRITORY",
+  "title": "CAPITAL TERRITORY"
+ },
+ {
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Tax Category",
+  "modified": "2023-09-22 16:26:56.912386",
+  "name": "SINDH",
+  "title": "SINDH"
+ }
+]

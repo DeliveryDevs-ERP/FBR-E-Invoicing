@@ -4,3 +4,5 @@
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+
+fbr_e_invoicing.patches.v1_0.populate_hs_codes

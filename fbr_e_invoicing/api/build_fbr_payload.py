@@ -1,5 +1,18 @@
 import frappe
 from frappe.utils import flt, formatdate
+import re
+
+def normalise_cnic(value: str | None) -> str:
+    """
+    Normalize CNIC/NTN/Tax IDs by removing non-digits (hyphens, spaces, etc.)
+    Examples:
+      "31303-9589654-7" -> "3130395896547"
+      " 31303 9589654 7 " -> "3130395896547"
+    """
+    if not value:
+        return ""
+    return re.sub(r"\D", "", str(value)).strip()
+
 
 @frappe.whitelist()
 def build_fbr_payload(sales_invoice_name: str):
@@ -10,7 +23,12 @@ def build_fbr_payload(sales_invoice_name: str):
     doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
 
     # --- Party helpers ---
-    buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
+    if frappe.db.get_value('Customer', doc.customer, 'tax_id'):
+        buyer_tax_id = frappe.db.get_value('Customer', doc.customer, 'tax_id') if doc.customer else None
+    elif doc.nic:
+        buyer_tax_id = normalise_cnic(doc.nic)
+    elif doc.ntn:
+        buyer_tax_id = doc.ntn
     buyer_name = frappe.db.get_value('Customer', doc.customer, 'customer_name') if doc.customer else None
     buyer_province = doc.tax_category
     buyer_address = _get_party_address_text('Customer', doc.customer)
@@ -28,11 +46,11 @@ def build_fbr_payload(sales_invoice_name: str):
         "invoiceDate": formatdate(doc.posting_date, "yyyy-mm-dd"),
         "sellerNTNCNIC": (seller_tax_id or ""),
         "sellerBusinessName": (seller_name or ""),
-        "sellerProvince": (buyer_province or ""),
+        "sellerProvince": (seller_province or ""),
         "sellerAddress": (seller_address or ""),
         "buyerNTNCNIC": (buyer_tax_id or ""),
         "buyerBusinessName": (buyer_name or ""),
-        "buyerProvince": (seller_province or ""),
+        "buyerProvince": (buyer_province or ""),
         "buyerAddress": (buyer_address or ""),
         "buyerRegistrationType": buyer_registration_type,
         "invoiceRefNo": "",
