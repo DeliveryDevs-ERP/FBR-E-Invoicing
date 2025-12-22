@@ -1,0 +1,189 @@
+<style>
+    .print-format {
+        padding: 0mm;
+        margin: 0mm;
+        font-family: sans-serif;
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9px;
+        table-layout: auto;
+    }
+
+    .report-table th,
+    .report-table td {
+        border: 1px solid #444;
+        padding: 3px;
+        vertical-align: middle;
+    }
+
+    .report-table th {
+        background-color: #eee;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .text-left {
+        text-align: left;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .no-wrap {
+        white-space: nowrap;
+    }
+
+    /* Print-specific styles for PDF generation */
+    @media print {
+        .report-table {
+            font-size: 5.5px !important;
+            table-layout: fixed !important;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 1px !important;
+            overflow: hidden !important;
+            word-wrap: break-word !important;
+        }
+
+        /* 17 columns - percentages must total ~100% */
+        .col-sr {
+            width: 2% !important;
+        }
+
+        .col-item {
+            width: 7% !important;
+        }
+
+        .col-buyer {
+            width: 8% !important;
+        }
+
+        .col-ntn {
+            width: 6% !important;
+        }
+
+        .col-cnic {
+            width: 7% !important;
+        }
+
+        .col-district {
+            width: 4% !important;
+        }
+
+        .col-buyer-type {
+            width: 5% !important;
+        }
+
+        .col-doc-type {
+            width: 5% !important;
+        }
+
+        .col-doc-no {
+            width: 7% !important;
+        }
+
+        .col-doc-date {
+            width: 5% !important;
+        }
+
+        .col-hs-code {
+            width: 5% !important;
+        }
+
+        .col-sale-type {
+            width: 6% !important;
+        }
+
+        .col-rate {
+            width: 3% !important;
+        }
+
+        .col-value {
+            width: 7% !important;
+        }
+
+        .col-tax {
+            width: 6% !important;
+        }
+
+        .col-fbr-status {
+            width: 5% !important;
+        }
+
+        .col-fbr-invoice {
+            width: 8% !important;
+        }
+    }
+</style>
+
+<div style="margin-bottom: 10px;">
+    <h3 style="text-align: center; margin: 0 0 5px 0;">
+        {%= report.report_name %}
+    </h3>
+    <table style="width: 100%; font-size: 9px; border: none; margin-bottom: 5px;">
+        <tr>
+            <td style="width: 33%; border: none; vertical-align: top;">
+                <strong>Company:</strong> {%= filters.company %}<br>
+                <strong>Tax Category:</strong> Punjab
+            </td>
+            <td style="width: 33%; border: none; vertical-align: top; text-align: center;">
+                <strong>Status:</strong> {%= filters.report_status || "Submitted" %}
+                {% if (filters.fbr_status && filters.fbr_status !== "") { %}
+                <br><strong>FBR Status:</strong> {%= filters.fbr_status %}
+                {% } %}
+            </td>
+            <td style="width: 33%; text-align: right; border: none; vertical-align: top;">
+                <strong>Date:</strong> {%= filters.from_date %} to {%= filters.to_date %}
+            </td>
+        </tr>
+    </table>
+</div>
+
+<table class="report-table">
+    <thead>
+        <tr>
+            {% for(var i = 0; i < columns.length; i++) { var col=columns[i]; var colClass='' ; if(col.fieldname==='sr' )
+                colClass='col-sr' ; else if(col.fieldname==='item_name' ) colClass='col-item' ; else
+                if(col.fieldname==='buyer_name' ) colClass='col-buyer' ; else if(col.fieldname==='ntn' )
+                colClass='col-ntn' ; else if(col.fieldname==='cnic' ) colClass='col-cnic' ; else
+                if(col.fieldname==='district' ) colClass='col-district' ; else if(col.fieldname==='buyer_type' )
+                colClass='col-buyer-type' ; else if(col.fieldname==='doc_type' ) colClass='col-doc-type' ; else
+                if(col.fieldname==='doc_number' ) colClass='col-doc-no' ; else if(col.fieldname==='doc_date' )
+                colClass='col-doc-date' ; else if(col.fieldname==='hs_code' ) colClass='col-hs-code' ; else
+                if(col.fieldname==='sale_type' ) colClass='col-sale-type' ; else if(col.fieldname==='rate' )
+                colClass='col-rate' ; else if(col.fieldname==='value_excl_tax' ) colClass='col-value' ; else
+                if(col.fieldname==='sales_tax' ) colClass='col-tax' ; else if(col.fieldname==='fbr_status' )
+                colClass='col-fbr-status' ; else if(col.fieldname==='fbr_invoice_number' ) colClass='col-fbr-invoice' ;
+                %} <th class="{%= colClass %}" style="width: {%= col.width %}px">
+                {%= col.label %}
+                </th>
+                {% } %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for(var j = 0; j < data.length; j++) { var row=data[j]; %} <tr>
+            {% for(var k = 0; k < columns.length; k++) { var col=columns[k]; var val=row[col.fieldname]; var
+                is_number=(col.fieldtype==='Currency' || col.fieldtype==='Int' || col.fieldtype==='Float' ||
+                col.fieldtype==='Percent' ); var is_short=(col.fieldname==='ntn' || col.fieldname==='cnic' ||
+                col.fieldname==='doc_number' || col.fieldname==='doc_date' || col.fieldname==='sr' ||
+                col.fieldname==='hs_code' || col.fieldname==='doc_type' || col.fieldname==='fbr_status' ||
+                col.fieldname==='fbr_invoice_number' ); var align_class=is_number ? 'text-right' : 'text-left' ; var
+                wrap_class=(is_number || is_short) ? 'no-wrap' : '' ; %} <td
+                class="{%= align_class %} {%= wrap_class %}">
+                {%= frappe.format(val, col, row) %}
+                </td>
+                {% } %}
+                </tr>
+                {% } %}
+    </tbody>
+</table>
