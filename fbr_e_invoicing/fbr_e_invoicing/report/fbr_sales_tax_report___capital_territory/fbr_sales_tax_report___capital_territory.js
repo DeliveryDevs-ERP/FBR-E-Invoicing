@@ -1,9 +1,7 @@
 // Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-
-
-frappe.query_reports["FBR Sales Tax Report"] = {
+frappe.query_reports["FBR Sales Tax Report - Capital Territory"] = {
 	"filters": [
 		{
 			"fieldname": "company",
@@ -32,13 +30,6 @@ frappe.query_reports["FBR Sales Tax Report"] = {
 			"label": __("Buyer"),
 			"fieldtype": "Link",
 			"options": "Customer",
-			"reqd": 0
-		},
-		{
-			"fieldname": "tax_category",
-			"label": __("Tax Category"),
-			"fieldtype": "Link",
-			"options": "Tax Category",
 			"reqd": 0
 		},
 		{
