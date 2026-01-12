@@ -1,12 +1,14 @@
 import frappe
 from frappe import _
 from datetime import datetime
+from frappe.utils import nowdate, now_datetime
 
 def validate_fbr_fields(doc, method):
     """Validate FBR required fields before saving Sales Invoice"""
     if not doc.custom_submit_to_fbr:
         return
-        
+
+    doc.posting_date = nowdate()
     errors = []
     
     # Check if FBR setup is configured
