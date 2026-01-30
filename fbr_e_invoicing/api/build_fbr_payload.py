@@ -34,8 +34,7 @@ def build_fbr_payload(sales_invoice_name: str):
     buyer_address = _get_party_address_text('Customer', doc.customer)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
     seller_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    # seller_name = doc.company # should be same as fbr name 'FALCON-I PRIVATE LIMITED'
-    seller_name = "FALCON-I PRIVATE LIMITED"
+    seller_name = doc.company
     seller_province = doc.custom_province
     seller_address = _get_party_address_text('Company', doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
