@@ -4,6 +4,19 @@ app_publisher = "osama.ahmed@deliverydevs.com"
 app_description = "FBR Digital invoicing integration"
 app_email = "osama.ahmed@deliverydevs.com"
 app_license = "mit"
+app_icon = "octicon octicon-briefcase"  # pick any valid icon class
+app_color = "blue"
+
+
+add_to_apps_screen = [
+    {
+        "name": app_name,
+        "logo": "/assets/fbr_e_invoicing/icon.png",
+        "title": app_title,
+        "route": "/desk/fbr-e-invoicing",
+        "has_permission": "fbr_e_invoicing.api.permissions.check_app_permission",
+    }
+]
 
 # Document Events
 # ---------------
