@@ -95,7 +95,38 @@
         }
     ],
     "sequence_id": 1.0,
-    "shortcuts": [],
+    "shortcuts": [
+        {
+            "label": "FBR E-Inv Setup",
+            "link_to": "FBR E-Inv Setup",
+            "type": "DocType"
+        },
+        {
+            "label": "HS Code",
+            "link_to": "HS Code",
+            "type": "DocType"
+        },
+        {
+            "label": "FBR Sale Type",
+            "link_to": "FBR Sale Type",
+            "type": "DocType"
+        },
+        {
+            "label": "Province",
+            "link_to": "Province",
+            "type": "DocType"
+        },
+        {
+            "label": "FBR Logs",
+            "link_to": "FBR Logs",
+            "type": "DocType"
+        },
+        {
+            "label": "FBR Queue",
+            "link_to": "FBR Queue",
+            "type": "DocType"
+        }
+    ],
     "title": "Pak Compliance",
     "type": "Workspace"
 }
