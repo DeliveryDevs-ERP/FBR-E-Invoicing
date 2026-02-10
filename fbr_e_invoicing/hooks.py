@@ -1,5 +1,5 @@
 app_name = "fbr_e_invoicing"
-app_title = "FBR E-Invoicing"
+app_title = "Pak Compliance"
 app_publisher = "osama.ahmed@deliverydevs.com"
 app_description = "FBR Digital invoicing integration"
 app_email = "osama.ahmed@deliverydevs.com"
@@ -12,8 +12,8 @@ add_to_apps_screen = [
     {
         "name": app_name,
         "logo": "/assets/fbr_e_invoicing/icon.png",
-        "title": app_title,
-        "route": "/desk/fbr-e-invoicing",
+        "title": app_title,  # Display name: "Pak Compliance"
+        "route": "/app/pak-compliance",  # Must match workspace 'name' field slug
         "has_permission": "fbr_e_invoicing.api.permissions.check_app_permission",
     }
 ]
