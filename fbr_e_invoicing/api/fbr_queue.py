@@ -169,6 +169,7 @@ def get_queue_status():
             "FBR Queue",
             filters={"status": "Failed"},
             fields=["document_type", "document_name", "error_message", "retry_count", "created_at"],
+            order_by="modified desc",
             limit=10
         )
         
