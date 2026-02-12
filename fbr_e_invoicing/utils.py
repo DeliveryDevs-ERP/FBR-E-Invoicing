@@ -44,7 +44,6 @@ def sync_hs_codes():
                     }
                 ).insert(ignore_permissions=True)
 
-        frappe.db.commit()
         print(f"Successfully synced {len(data)} HS Codes.")
     except requests.exceptions.RequestException as e:
         # Log connection/API errors
@@ -93,7 +92,6 @@ def sync_provinces():
                     }
                 ).insert(ignore_permissions=True)
 
-        frappe.db.commit()
         print(f"Successfully synced {len(data)} Province.")
     except requests.exceptions.RequestException as e:
         # Log connection/API errors
@@ -161,7 +159,6 @@ def create_fbr_sale_types():
         except Exception as e:
             frappe.logger().error(f"Error creating FBR Sale Type {sale_type['name']}: {str(e)}")
     
-    frappe.db.commit()
     frappe.logger().info("FBR Sale Types populated successfully")
 
     
