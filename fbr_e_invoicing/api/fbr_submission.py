@@ -33,7 +33,7 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         
     except Exception as e:
         # Log the error
-        log_fbr_submission(doctype, docname, {}, {"error": str(e)}, "Error")
+        log_fbr_submission(doctype, docname, {}, {"error": str(e)}, "Error", defer_insert=True)
         frappe.throw(f"FBR submission failed: {str(e)}")
 
 @frappe.whitelist()
@@ -71,9 +71,6 @@ def bulk_submit_invoices(doctype, docnames):
         except Exception as e:
             frappe.log_error(f"Error queuing {doctype} {docname}: {str(e)}", "FBR Bulk Submit")
             continue
-    
-    # Commit the changes
-    frappe.db.commit()
     
     return {"queued_count": queued_count}
 
@@ -145,7 +142,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     except Exception as e:
         frappe.throw(f"FBR submission error: {str(e)}")
 
-def log_fbr_submission(document_type, document_name, payload, response, status):
+def log_fbr_submission(document_type, document_name, payload, response, status, defer_insert=False):
     """Log FBR submission to FBR Logs"""
     try:
         log_doc = frappe.new_doc("FBR Logs")
@@ -158,8 +155,10 @@ def log_fbr_submission(document_type, document_name, payload, response, status):
             "submitted_at": now(),
             "fbr_invoice_number": response.get("invoiceNumber", "") if response else ""
         })
-        log_doc.insert(ignore_permissions=True)
-        frappe.db.commit()
+        if defer_insert:
+            log_doc.deferred_insert()
+        else:
+            log_doc.insert(ignore_permissions=True)
     except Exception as e:
         frappe.log_error(f"Error logging FBR submission: {str(e)}", "FBR Logging")
 

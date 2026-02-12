@@ -41,7 +41,6 @@ def add_to_queue(doctype, docname, status="Pending", error_message="", priority=
             )
             queue_doc.insert(ignore_permissions=True)
 
-        frappe.db.commit()
         return {"success": True, "queue_id": queue_doc.name}
 
     except Exception as e:
@@ -51,94 +50,114 @@ def add_to_queue(doctype, docname, status="Pending", error_message="", priority=
 
 @frappe.whitelist()
 def process_queue(limit=50):
-    """Process pending items in the FBR queue"""
+    """Process pending items in the FBR queue by enqueuing each as a background job"""
     try:
-        # Get pending queue items
         queue_items = frappe.get_all(
             "FBR Queue",
             filters={
                 "status": "Pending",
                 "retry_count": ["<", 5],  # Max 5 retries
             },
-            fields=[
-                "name",
-                "document_type",
-                "document_name",
-                "priority",
-                "retry_count",
-            ],
+            fields=["name"],
             order_by="priority desc, created_at asc",
             limit=limit,
         )
 
-        processed_count = 0
-
+        enqueued_count = 0
         for item in queue_items:
             try:
-                # Mark as processing
-                frappe.db.set_value("FBR Queue", item.name, "status", "Processing")
-                frappe.db.commit()
-
-                # Process the item
-                result = process_queue_item(item)
-
-                if result["success"]:
-                    # Mark as completed
-                    frappe.db.set_value(
-                        "FBR Queue",
-                        item.name,
-                        {
-                            "status": "Completed",
-                            "completed_at": now(),
-                            "error_message": "",
-                        },
-                    )
-                    processed_count += 1
-                else:
-                    # Mark as failed or pending for retry
-                    retry_count = item.retry_count + 1
-                    if retry_count >= 5:
-                        status = "Failed"
-                    else:
-                        status = "Pending"
-
-                    frappe.db.set_value(
-                        "FBR Queue",
-                        item.name,
-                        {
-                            "status": status,
-                            "retry_count": retry_count,
-                            "last_retry_at": now(),
-                            "error_message": result.get("error", "Unknown error"),
-                        },
-                    )
-
+                frappe.enqueue(
+                    "fbr_e_invoicing.api.fbr_queue._process_single_queue_item",
+                    queue="short",
+                    queue_item_name=item.name,
+                    enqueue_after_commit=True,
+                    job_id=f"fbr_queue_item::{item.name}",
+                    deduplicate=True,
+                )
+                enqueued_count += 1
             except Exception as e:
-                # Mark as failed
                 frappe.db.set_value(
                     "FBR Queue",
                     item.name,
                     {
-                        "status": "Failed",
-                        "error_message": str(e),
-                        "retry_count": item.retry_count + 1,
+                        "status": "Pending",
+                        "error_message": f"Enqueue failed: {str(e)}",
                     },
                 )
                 frappe.log_error(
-                    f"Error processing queue item {item.name}: {str(e)}",
-                    "FBR Queue Processing",
+                    f"Error enqueueing queue item {item.name}: {str(e)}",
+                    "FBR Queue Enqueue",
                 )
 
-            frappe.db.commit()
-
         # Clean up old completed items (older than 30 days)
-        cleanup_old_queue_items()
+        frappe.enqueue(
+            "fbr_e_invoicing.api.fbr_queue.cleanup_old_queue_items",
+            queue="short",
+            enqueue_after_commit=True,
+            job_id="fbr_queue_cleanup_old_items",
+            deduplicate=True,
+        )
 
-        return {"processed_count": processed_count}
+        # Keep processed_count for backward compatibility with old API consumers.
+        return {"enqueued_count": enqueued_count, "processed_count": enqueued_count}
 
     except Exception as e:
         frappe.log_error(f"Error processing FBR queue: {str(e)}", "FBR Queue")
-        return {"processed_count": 0, "error": str(e)}
+        return {"enqueued_count": 0, "processed_count": 0, "error": str(e)}
+
+
+def _process_single_queue_item(queue_item_name):
+    """Process a single queue item in its own background job (auto-committed)"""
+    if not frappe.db.exists("FBR Queue", queue_item_name):
+        return
+
+    queue_entry = frappe.get_doc("FBR Queue", queue_item_name)
+
+    if queue_entry.status != "Pending":
+        return
+
+    try:
+        frappe.db.set_value("FBR Queue", queue_item_name, "status", "Processing")
+        queue_entry.reload()
+        result = process_queue_item(queue_entry)
+
+        if result["success"]:
+            frappe.db.set_value(
+                "FBR Queue",
+                queue_item_name,
+                {
+                    "status": "Completed",
+                    "completed_at": now(),
+                    "error_message": "",
+                },
+            )
+        else:
+            retry_count = (queue_entry.retry_count or 0) + 1
+            frappe.db.set_value(
+                "FBR Queue",
+                queue_item_name,
+                {
+                    "status": "Failed" if retry_count >= 5 else "Pending",
+                    "retry_count": retry_count,
+                    "last_retry_at": now(),
+                    "error_message": result.get("error", "Unknown error"),
+                },
+            )
+
+    except Exception as e:
+        frappe.db.set_value(
+            "FBR Queue",
+            queue_item_name,
+            {
+                "status": "Failed",
+                "error_message": str(e),
+                "retry_count": (queue_entry.retry_count or 0) + 1,
+            },
+        )
+        frappe.log_error(
+            f"Error processing queue item {queue_item_name}: {str(e)}",
+            "FBR Queue Processing",
+        )
 
 
 def process_queue_item(queue_item):
@@ -232,7 +251,6 @@ def retry_failed_items():
             WHERE status = 'Failed' AND retry_count < 5
         """)
 
-        frappe.db.commit()
 
         # Get count of items that will be retried
         retry_count = frappe.db.count("FBR Queue", {"status": "Pending"})
@@ -257,8 +275,6 @@ def cleanup_old_queue_items():
         """,
             cutoff_date,
         )
-
-        frappe.db.commit()
 
     except Exception as e:
         frappe.log_error(f"Error cleaning up queue: {str(e)}", "FBR Queue Cleanup")
