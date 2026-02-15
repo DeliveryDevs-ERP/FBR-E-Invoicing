@@ -1,8 +1,35 @@
 // Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("FBR E-Inv Setup", {
-// 	refresh(frm) {
+frappe.ui.form.on("FBR E-Inv Setup", {
+	refresh(frm) {
+		toggle_fetch_hs_codes_button(frm);
+	},
+	after_save(frm) {
+		toggle_fetch_hs_codes_button(frm);
+	},
+});
 
-// 	},
-// });
+function has_required_fbr_credentials(frm) {
+	const api_endpoint = (frm.doc.api_endpoint || "").trim();
+	const pral_authorization_token = (frm.doc.pral_authorization_token || "").trim();
+	return Boolean(api_endpoint && pral_authorization_token);
+}
+
+function toggle_fetch_hs_codes_button(frm) {
+	const label = __("Fetch HS Codes");
+	frm.page.remove_inner_button(label);
+
+	if (!has_required_fbr_credentials(frm)) {
+		return;
+	}
+
+	frm.page.add_inner_button(label, () => {
+		frappe.call({
+			method: "fbr_e_invoicing.utils.run_master_data_sync",
+			freeze: true,
+			freeze_message: __("Fetching HS Codes and Provinces..."),
+			callback: () => frm.reload_doc(),
+		});
+	});
+}

@@ -14,8 +14,12 @@ def sync_hs_codes():
         auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
     # 3. Fail Gracefully
     if not auth_token:
-        print("WARNING: PRAL Access token not found. Skipping Sync.")
-        return
+        # print("WARNING: PRAL Access token not found. Skipping Sync.")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": "PRAL Access token not found. Skipping Sync.",
+        }
 
     # --- Proceed with Sync ---
     url = "https://gw.fbr.gov.pk/pdi/v1/itemdesccode"
@@ -26,7 +30,16 @@ def sync_hs_codes():
     try:
         # 1. Make the GET request
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raises error if status is 401, 500, etc.
+        if response.status_code != 200:
+            frappe.log_error(
+                f"FBR API Error [{response.status_code}]: {response.text}",
+                "HS Code Sync Failed",
+            )
+            return {
+                "success": False,
+                "status_code": response.status_code,
+                "response": response.text,
+            }
 
         data = response.json()
         # 2. Iterate through the list
@@ -45,15 +58,30 @@ def sync_hs_codes():
                 ).insert(ignore_permissions=True)
 
         print(f"Successfully synced {len(data)} HS Codes.")
+        return {
+            "success": True,
+            "status_code": response.status_code,
+            "response": f"Successfully synced {len(data)} HS Codes.",
+        }
     except requests.exceptions.RequestException as e:
         # Log connection/API errors
         frappe.log_error(f"FBR API Error: {str(e)}", "HS Code Sync Failed")
         print(f"API Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
 
     except Exception as e:
         # Log other python errors
         frappe.log_error(f"Sync Logic Error: {str(e)}", "HS Code Sync Failed")
         print(f"Logic Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
 
 
 
@@ -68,8 +96,12 @@ def sync_provinces():
         auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
     # 3. Fail Gracefully
     if not auth_token:
-        print("WARNING: PRAL Access token not found. Skipping Sync.")
-        return
+        # print("WARNING: PRAL Access token not found. Skipping Sync.")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": "PRAL Access token not found. Skipping Sync.",
+        }
 
     # --- Proceed with Sync ---
     url = "https://gw.fbr.gov.pk/pdi/v1/provinces"
@@ -80,7 +112,16 @@ def sync_provinces():
     try:
         # 1. Make the GET request
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raises error if status is 401, 500, etc.
+        if response.status_code != 200:
+            frappe.log_error(
+                f"FBR API Error [{response.status_code}]: {response.text}",
+                "Province Sync Failed",
+            )
+            return {
+                "success": False,
+                "status_code": response.status_code,
+                "response": response.text,
+            }
         data = response.json()
         for item in data:
             province_name = item.get("stateProvinceDesc")
@@ -93,15 +134,152 @@ def sync_provinces():
                 ).insert(ignore_permissions=True)
 
         print(f"Successfully synced {len(data)} Province.")
+        return {
+            "success": True,
+            "status_code": response.status_code,
+            "response": f"Successfully synced {len(data)} Province.",
+        }
     except requests.exceptions.RequestException as e:
         # Log connection/API errors
         frappe.log_error(f"FBR API Error: {str(e)}", "Province Sync Failed")
         print(f"API Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
 
     except Exception as e:
         # Log other python errors
         frappe.log_error(f"Sync Logic Error: {str(e)}", "Province Sync Failed")
         print(f"Logic Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
+
+
+@frappe.whitelist()
+def run_master_data_sync():
+    """Run HS Code + Province sync and report failures in UI popup."""
+    hs_result = sync_hs_codes()
+    province_result = sync_provinces()
+
+    results = {
+        "sync_hs_codes": hs_result or {},
+        "sync_provinces": province_result or {},
+    }
+
+    failed = []
+    for function_name, result in results.items():
+        status_code = result.get("status_code")
+        if status_code != 200:
+            failed.append(
+                {
+                    "function": function_name,
+                    "status_code": status_code,
+                    "response": result.get("response"),
+                }
+            )
+
+    if failed:
+        message_parts = []
+        for item in failed:
+            status_code = item["status_code"] if item["status_code"] is not None else "N/A"
+            response = frappe.utils.escape_html((item["response"] or "No response")[:1000])
+            message_parts.append(
+                f"<b>{item['function']}</b><br>"
+                f"Error Code: {status_code}<br>"
+                f"Response: {response}"
+            )
+
+        popup_message = "<br><br>".join(message_parts)
+        log_message = "\n\n".join(
+            [
+                f"{item['function']} | Error Code: {item['status_code'] if item['status_code'] is not None else 'N/A'} | "
+                f"Response: {(item['response'] or 'No response')[:2000]}"
+                for item in failed
+            ]
+        )
+        frappe.log_error(log_message, "FBR Master Data Sync Failed")
+        frappe.msgprint(
+            msg=popup_message,
+            title="FBR Sync Error",
+            indicator="red",
+        )
+        return {"success": False, "results": results}
+
+    frappe.db.set_single_value("FBR E-Inv Setup", "hs_codes_retrieved", 1)
+    frappe.msgprint(
+        msg="HS Codes and Provinces synced successfully.",
+        title="FBR Sync",
+        indicator="green",
+    )
+    return {"success": True, "results": results}
+
+
+def is_api_key_valid():
+    auth_token = None
+    if frappe.db.exists("DocType", "FBR E-Inv Setup"):
+        auth_token = frappe.db.get_single_value(
+            "FBR E-Inv Setup", "pral_authorization_token"
+        )
+
+    if not auth_token:
+        return False
+
+    url = "https://gw.fbr.gov.pk/pdi/v1/provinces"
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            frappe.db.set_single_value("FBR E-Inv Setup", "is_api_token_valid", 1)
+            return True
+        if response.status_code == 401:
+            return False
+        if response.status_code == 500:
+            return "Internal Server Error"
+        return False
+    except requests.exceptions.RequestException:
+        return False
+
+
+@frappe.whitelist()
+def get_fbr_setup_status():
+    """Return non-sensitive setup completion flags for workspace guidance UI."""
+    allowed_roles = {"System Manager", "Accounts Manager"}
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    if not allowed_roles.intersection(user_roles):
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    api_endpoint = (
+        frappe.db.get_single_value("FBR E-Inv Setup", "api_endpoint") or ""
+    ).strip()
+    token = (
+        frappe.db.get_single_value("FBR E-Inv Setup", "pral_authorization_token") or ""
+    ).strip()
+    hs_codes_retrieved = frappe.db.get_single_value(
+        "FBR E-Inv Setup", "hs_codes_retrieved"
+    )
+
+    endpoint_missing = not api_endpoint
+    token_missing = not token
+    try:
+        hs_codes_missing = int(hs_codes_retrieved or 0) != 1
+    except (TypeError, ValueError):
+        hs_codes_missing = True
+
+    return {
+        "endpoint_missing": endpoint_missing,
+        "token_missing": token_missing,
+        "hs_codes_missing": hs_codes_missing,
+        "show_instructions": endpoint_missing or token_missing or hs_codes_missing,
+    }
 
 
 def create_fbr_sale_types():

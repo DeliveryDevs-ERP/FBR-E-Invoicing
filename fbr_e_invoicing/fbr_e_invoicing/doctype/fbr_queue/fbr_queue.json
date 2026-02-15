@@ -86,7 +86,7 @@
    "read_only": 1
   },
   {
-   "default": "25",
+   "default": "5",
    "fieldname": "max_retries",
    "fieldtype": "Int",
    "label": "Max Retries"

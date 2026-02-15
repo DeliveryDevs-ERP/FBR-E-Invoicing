@@ -1,9 +1,14 @@
 {
  "app": "fbr_e_invoicing",
  "charts": [],
- "content": "[{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
+ "content": "[{\"id\":\"Custom_Block_Setup_Instructions\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Setup Instructions\",\"col\":12}},{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
  "creation": "2026-02-10 12:37:03.113486",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "FBR Setup Instructions Block",
+   "label": "Setup Instructions"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -178,7 +183,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-12 11:15:00.000000",
+ "modified": "2026-02-15 15:31:30.000000",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "Pak Compliance",

@@ -32,6 +32,10 @@ doc_events = {
     },
 }
 
+doctype_list_js = {
+    "Sales Invoice": "public/js/sales_invoice_list.js",
+}
+
 # Scheduled Tasks
 # ---------------
 
@@ -187,4 +191,12 @@ include_in_backup = ["FBR Logs", "FBR Queue"]
 
 fixtures = [
     {"dt": "Tax Category"},
+    {
+        "dt": "Client Script",
+        "filters": [["name", "in", ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"]]],
+    },
+    {
+        "dt": "Custom HTML Block",
+        "filters": [["name", "in", ["FBR Setup Instructions Block"]]],
+    },
 ]
