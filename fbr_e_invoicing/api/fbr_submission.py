@@ -32,9 +32,37 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         return response
         
     except Exception as e:
+        error_message = str(e)
+
         # Log the error
-        log_fbr_submission(doctype, docname, {}, {"error": str(e)}, "Error", defer_insert=True)
-        frappe.throw(f"FBR submission failed: {str(e)}")
+        log_fbr_submission(
+            doctype, docname, {}, {"error": error_message}, "Error", defer_insert=True
+        )
+
+        # Auto-queue non-retry failures for asynchronous retry.
+        if not is_retry and doctype in ("Sales Invoice", "POS Invoice"):
+            try:
+                from fbr_e_invoicing.api.fbr_queue import add_to_queue
+
+                queue_result = add_to_queue(
+                    doctype=doctype,
+                    docname=docname,
+                    status="Pending",
+                    error_message=error_message,
+                    priority=5,
+                )
+                if not queue_result.get("success"):
+                    frappe.log_error(
+                        f"Failed to auto-queue {doctype} {docname}: {queue_result.get('error')}",
+                        "FBR Auto Queue Failure",
+                    )
+            except Exception as queue_error:
+                frappe.log_error(
+                    f"Error auto-queueing failed submission for {doctype} {docname}: {str(queue_error)}",
+                    "FBR Auto Queue Failure",
+                )
+
+        frappe.throw(f"FBR submission failed: {error_message}")
 
 @frappe.whitelist()
 def bulk_submit_invoices(doctype, docnames):
@@ -73,6 +101,92 @@ def bulk_submit_invoices(doctype, docnames):
             continue
     
     return {"queued_count": queued_count}
+
+
+@frappe.whitelist()
+def bulk_submit_sales_invoices(docnames):
+    """Queue selected Sales Invoices for FBR submission.
+
+    Keeps FBR logging semantics unchanged:
+    - No FBR Logs entry at queueing time
+    - FBR Logs are written later during actual submit attempts
+    """
+    if isinstance(docnames, str):
+        docnames = json.loads(docnames)
+
+    if not isinstance(docnames, list):
+        frappe.throw("docnames must be a list or JSON array")
+
+    unique_docnames = []
+    seen = set()
+    for name in docnames:
+        if not name:
+            continue
+        docname = str(name).strip()
+        if not docname or docname in seen:
+            continue
+        seen.add(docname)
+        unique_docnames.append(docname)
+
+    if not unique_docnames:
+        return {
+            "queued_count": 0,
+            "queued_invoices": [],
+            "draft_invoices": [],
+            "failed_invoices": [],
+            "queue_route": "/app/fbr-queue",
+        }
+
+    invoices = frappe.get_all(
+        "Sales Invoice",
+        filters={"name": ["in", unique_docnames]},
+        fields=["name", "docstatus"],
+    )
+
+    invoice_map = {row.name: row for row in invoices}
+    draft_invoices = []
+    queued_invoices = []
+    failed_invoices = []
+
+    from fbr_e_invoicing.api.fbr_queue import add_to_queue
+
+    for docname in unique_docnames:
+        doc = invoice_map.get(docname)
+        if not doc:
+            failed_invoices.append({"name": docname, "error": "Sales Invoice not found"})
+            frappe.log_error(
+                f"Sales Invoice {docname} not found while bulk queueing",
+                "FBR Bulk Submit Sales Invoice",
+            )
+            continue
+
+        if doc.docstatus == 0:
+            draft_invoices.append(docname)
+            continue
+
+        queue_result = add_to_queue(
+            doctype="Sales Invoice",
+            docname=docname,
+            status="Pending",
+            priority=5,
+        )
+        if queue_result.get("success"):
+            queued_invoices.append(docname)
+        else:
+            error_message = queue_result.get("error") or "Failed to add to queue"
+            failed_invoices.append({"name": docname, "error": error_message})
+            frappe.log_error(
+                f"Error queueing Sales Invoice {docname}: {error_message}",
+                "FBR Bulk Submit Sales Invoice",
+            )
+
+    return {
+        "queued_count": len(queued_invoices),
+        "queued_invoices": queued_invoices,
+        "draft_invoices": draft_invoices,
+        "failed_invoices": failed_invoices,
+        "queue_route": "/app/fbr-queue",
+    }
 
 def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     """Submit payload to FBR API via HTTP POST and return parsed JSON dict.
