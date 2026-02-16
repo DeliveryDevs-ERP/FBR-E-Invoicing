@@ -1,6 +1,16 @@
 import frappe
 import requests
-import os
+
+
+HARDCODED_PROVINCES = [
+    "PUNJAB",
+    "SINDH",
+    "KYBER PAKHTUNKHWA",
+    "BALOCHISTAN",
+    "CAPITAL TERRITORY",
+    "GILGIT BALTISTAN",
+    "AZAD JAMMU AND KASHMIR",
+]
 
 
 def sync_hs_codes():
@@ -42,13 +52,27 @@ def sync_hs_codes():
             }
 
         data = response.json()
+        inserted_count = 0
+        updated_count = 0
         # 2. Iterate through the list
         for item in data:
             # Extract fields using the EXACT keys from the image
             hs_code = item.get("hS_CODE")
             description = item.get("description")
             # 3. Insert into Frappe (Idempotent check)
-            if hs_code:  # and not frappe.db.exists("HS Code", {"code": hs_code}):
+            if not hs_code:
+                continue
+
+            if frappe.db.exists("HS Code", hs_code):
+                frappe.db.set_value(
+                    "HS Code",
+                    hs_code,
+                    "description",
+                    description,
+                    update_modified=False,
+                )
+                updated_count += 1
+            else:
                 frappe.get_doc(
                     {
                         "doctype": "HS Code",
@@ -56,12 +80,22 @@ def sync_hs_codes():
                         "description": description,
                     }
                 ).insert(ignore_permissions=True)
+                inserted_count += 1
 
-        print(f"Successfully synced {len(data)} HS Codes.")
+        if frappe.db.exists("DocType", "FBR E-Inv Setup"):
+            frappe.db.set_single_value("FBR E-Inv Setup", "hs_codes_retrieved", 1)
+
+        print(
+            f"Successfully synced {len(data)} HS Codes. "
+            f"Inserted: {inserted_count}, Updated: {updated_count}."
+        )
         return {
             "success": True,
             "status_code": response.status_code,
-            "response": f"Successfully synced {len(data)} HS Codes.",
+            "response": (
+                f"Successfully synced {len(data)} HS Codes. "
+                f"Inserted: {inserted_count}, Updated: {updated_count}."
+            ),
         }
     except requests.exceptions.RequestException as e:
         # Log connection/API errors
@@ -84,91 +118,51 @@ def sync_hs_codes():
         }
 
 
-
-def sync_provinces():
-    auth_token = None
-    # 1. Try DocType
-    if frappe.db.exists("DocType", "FBR E-Inv Setup"):
-        auth_token = frappe.db.get_single_value(
-            "FBR E-Inv Setup", "pral_authorization_token"
-        )
-    if not auth_token:
-        auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
-    # 3. Fail Gracefully
-    if not auth_token:
-        # print("WARNING: PRAL Access token not found. Skipping Sync.")
-        return {
-            "success": False,
-            "status_code": None,
-            "response": "PRAL Access token not found. Skipping Sync.",
-        }
-
-    # --- Proceed with Sync ---
-    url = "https://gw.fbr.gov.pk/pdi/v1/provinces"
-    headers = {
-        "Authorization": f"Bearer {auth_token}",
-        "Content-Type": "application/json",
-    }
+def populate_provinces():
+    created = 0
+    skipped = 0
     try:
-        # 1. Make the GET request
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            frappe.log_error(
-                f"FBR API Error [{response.status_code}]: {response.text}",
-                "Province Sync Failed",
-            )
-            return {
-                "success": False,
-                "status_code": response.status_code,
-                "response": response.text,
-            }
-        data = response.json()
-        for item in data:
-            province_name = item.get("stateProvinceDesc")
-            if province_name:  
-                frappe.get_doc(
-                    {
-                        "doctype": "Province",
-                        "name": province_name,
-                    }
-                ).insert(ignore_permissions=True)
+        for province_name in HARDCODED_PROVINCES:
+            if frappe.db.exists("Province", province_name):
+                skipped += 1
+                continue
 
-        print(f"Successfully synced {len(data)} Province.")
+            frappe.get_doc(
+                {
+                    "doctype": "Province",
+                    "name": province_name,
+                }
+            ).insert(ignore_permissions=True)
+            created += 1
+
         return {
             "success": True,
-            "status_code": response.status_code,
-            "response": f"Successfully synced {len(data)} Province.",
+            "status_code": 200,
+            "response": (
+                f"Provinces ensured successfully. "
+                f"Created: {created}, Existing: {skipped}."
+            ),
         }
-    except requests.exceptions.RequestException as e:
-        # Log connection/API errors
-        frappe.log_error(f"FBR API Error: {str(e)}", "Province Sync Failed")
-        print(f"API Error: {str(e)}")
+    except Exception as e:
+        frappe.log_error(f"Province prepopulation failed: {str(e)}", "Province Population Failed")
         return {
             "success": False,
             "status_code": None,
             "response": str(e),
         }
 
-    except Exception as e:
-        # Log other python errors
-        frappe.log_error(f"Sync Logic Error: {str(e)}", "Province Sync Failed")
-        print(f"Logic Error: {str(e)}")
-        return {
-            "success": False,
-            "status_code": None,
-            "response": str(e),
-        }
+
+# Province sync from FBR API is intentionally disabled.
+# Provinces are now populated through `populate_provinces()`.
 
 
 @frappe.whitelist()
 def run_master_data_sync():
-    """Run HS Code + Province sync and report failures in UI popup."""
+    """Run HS Code sync and report failures in UI popup."""
     hs_result = sync_hs_codes()
-    province_result = sync_provinces()
 
     results = {
         "sync_hs_codes": hs_result or {},
-        "sync_provinces": province_result or {},
     }
 
     failed = []
@@ -210,13 +204,18 @@ def run_master_data_sync():
         )
         return {"success": False, "results": results}
 
-    frappe.db.set_single_value("FBR E-Inv Setup", "hs_codes_retrieved", 1)
     frappe.msgprint(
-        msg="HS Codes and Provinces synced successfully.",
+        msg="HS Codes synced successfully.",
         title="FBR Sync",
         indicator="green",
     )
     return {"success": True, "results": results}
+
+
+def run_post_migrate_sync():
+    """Post-migration sync for static Province data and HS Codes."""
+    populate_provinces()
+    sync_hs_codes()
 
 
 def is_api_key_valid():
@@ -338,5 +337,3 @@ def create_fbr_sale_types():
             frappe.logger().error(f"Error creating FBR Sale Type {sale_type['name']}: {str(e)}")
     
     frappe.logger().info("FBR Sale Types populated successfully")
-
-    
