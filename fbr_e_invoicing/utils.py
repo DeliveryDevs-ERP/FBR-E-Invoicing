@@ -216,6 +216,9 @@ def run_post_migrate_sync():
     """Post-migration sync for static Province data and HS Codes."""
     populate_provinces()
     sync_hs_codes()
+    from fbr_e_invoicing.tax_setup import setup_fbr_tax_artifacts
+
+    setup_fbr_tax_artifacts()
 
 
 def is_api_key_valid():

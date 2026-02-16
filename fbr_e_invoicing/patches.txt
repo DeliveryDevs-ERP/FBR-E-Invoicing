@@ -6,3 +6,4 @@
 # Patches added in this section will be executed after doctypes are migrated
 
 fbr_e_invoicing.patches.v1_0.populate_hs_codes
+fbr_e_invoicing.patches.v1_1.setup_fbr_tax_artifacts
