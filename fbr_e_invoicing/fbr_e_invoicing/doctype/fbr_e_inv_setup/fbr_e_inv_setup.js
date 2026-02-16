@@ -28,7 +28,7 @@ function toggle_fetch_hs_codes_button(frm) {
 		frappe.call({
 			method: "fbr_e_invoicing.utils.run_master_data_sync",
 			freeze: true,
-			freeze_message: __("Fetching HS Codes and Provinces..."),
+			freeze_message: __("Fetching HS Codes..."),
 			callback: () => frm.reload_doc(),
 		});
 	});

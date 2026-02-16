@@ -160,6 +160,7 @@ dashboard_charts = [
 # -------------------------
 
 after_install = "fbr_e_invoicing.install.after_install"
+after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
 # Backup hook - include FBR data in backups
