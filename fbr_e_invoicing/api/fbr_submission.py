@@ -1,8 +1,8 @@
 import frappe
 import json
+from frappe.utils import now
 import requests
-from datetime import datetime
-from frappe.utils import now, flt
+from requests.exceptions import HTTPError
 
 @frappe.whitelist()
 def submit_single_invoice(doctype, docname, is_retry=False):
@@ -191,9 +191,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
 
     Raises frappe.ValidationError (frappe.throw) with a readable message on failures.
     """
-    import requests
-    from requests.exceptions import RequestException, Timeout, HTTPError
-    import json as _json
+
 
     fbr_settings = frappe.get_single("FBR E-Inv Setup")
     api_endpoint = (fbr_settings.api_endpoint or "").strip()

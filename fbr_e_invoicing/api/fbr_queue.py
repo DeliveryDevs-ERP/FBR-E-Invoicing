@@ -77,6 +77,54 @@ def _get_due_pending_queue_items(limit=50):
     )
 
 
+def _mark_queue_item_failed_if_exhausted(queue_item_name):
+    """Mark a pending queue item as failed if retries are exhausted."""
+    modified_by = frappe.session.user or "Administrator"
+    frappe.db.sql(
+        """
+        UPDATE `tabFBR Queue`
+        SET
+            status = 'Failed',
+            error_message = %s,
+            next_retry_at = NULL,
+            modified = %s,
+            modified_by = %s
+        WHERE name = %s
+          AND status = 'Pending'
+          AND retry_count >= COALESCE(NULLIF(max_retries, 0), %s)
+        """,
+        (
+            "Max retries exceeded",
+            now(),
+            modified_by,
+            queue_item_name,
+            DEFAULT_MAX_RETRIES,
+        ),
+    )
+    return cint(getattr(frappe.db._cursor, "rowcount", 0)) > 0
+
+
+def _claim_queue_item_for_processing(queue_item_name):
+    """Atomically claim a queue item by transitioning Pending -> Processing."""
+    current_time = now_datetime()
+    modified_by = frappe.session.user or "Administrator"
+    frappe.db.sql(
+        """
+        UPDATE `tabFBR Queue`
+        SET
+            status = 'Processing',
+            modified = %s,
+            modified_by = %s
+        WHERE name = %s
+          AND status = 'Pending'
+          AND (next_retry_at IS NULL OR next_retry_at <= %s)
+          AND retry_count < COALESCE(NULLIF(max_retries, 0), %s)
+        """,
+        (now(), modified_by, queue_item_name, current_time, DEFAULT_MAX_RETRIES),
+    )
+    return cint(getattr(frappe.db._cursor, "rowcount", 0)) > 0
+
+
 def recover_stuck_and_retryable_items():
     """Recover stale Processing rows and retryable Failed rows."""
     now_dt = now_datetime()
@@ -221,31 +269,20 @@ def process_queue(limit=50):
 
 def _process_single_queue_item(queue_item_name):
     """Process a single queue item in its own background job (auto-committed)."""
+    if _mark_queue_item_failed_if_exhausted(queue_item_name):
+        return
+
+    if not _claim_queue_item_for_processing(queue_item_name):
+        return
+
     if not frappe.db.exists("FBR Queue", queue_item_name):
         return
 
     queue_entry = frappe.get_doc("FBR Queue", queue_item_name)
-    if queue_entry.status != "Pending":
-        return
-
-    if not _has_retry_left(queue_entry):
-        frappe.db.set_value(
-            "FBR Queue",
-            queue_item_name,
-            {
-                "status": "Failed",
-                "error_message": "Max retries exceeded",
-                "next_retry_at": None,
-            },
-        )
-        return
-
-    if not _is_due_for_retry(queue_entry):
+    if queue_entry.status != "Processing":
         return
 
     try:
-        frappe.db.set_value("FBR Queue", queue_item_name, "status", "Processing")
-        queue_entry.reload()
         result = process_queue_item(queue_entry)
 
         if result["success"]:
@@ -281,7 +318,7 @@ def process_queue_item(queue_item):
             queue_item.document_type, queue_item.document_name, is_retry=True
         )
 
-        doc = frappe.get_lazy_doc(queue_item.document_type, queue_item.document_name)
+        doc = frappe.get_doc(queue_item.document_type, queue_item.document_name)
 
         if queue_item.document_type == "Sales Invoice":
             doc.custom_fbr_response = json.dumps(response, indent=2)
