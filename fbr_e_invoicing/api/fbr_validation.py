@@ -116,15 +116,50 @@ def validate_pos_invoice_fbr(doc, errors):
     # POS Invoice specific validations
     if not doc.pos_profile:
         errors.append(_("POS Profile is required"))
-    
+
+    if not doc.company:
+        errors.append(_("Company is required for FBR submission"))
+
     if doc.pos_profile:
         pos_profile = frappe.get_doc("POS Profile", doc.pos_profile)
         if not pos_profile.company:
             errors.append(_("POS Profile must have a company assigned"))
-    
-    # Check if payload exists
-    if not doc.custom_payload:
-        errors.append(_("FBR payload not found. Document may need to be saved first."))
+
+    if not doc.custom_province:
+        errors.append(_("Seller Province is required for FBR submission"))
+
+    if not doc.tax_category:
+        errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
+
+    if doc.company:
+        company_tax_id = frappe.db.get_value("Company", doc.company, "tax_id")
+        if not company_tax_id:
+            errors.append(_("Company Tax ID is required for FBR submission"))
+
+    if not doc.items:
+        errors.append(_("At least one item is required for FBR submission"))
+        return
+
+    missing_hs_codes = []
+    missing_sale_types = []
+    missing_tax_templates = []
+
+    for idx, item in enumerate(doc.items, 1):
+        if not item.custom_hs_code:
+            missing_hs_codes.append(f"Row {idx}: {item.item_name}")
+        if not item.custom_sale_type:
+            missing_sale_types.append(f"Row {idx}: {item.item_name}")
+        if not item.item_tax_template:
+            missing_tax_templates.append(f"Row {idx}: {item.item_name}")
+
+    if missing_hs_codes:
+        errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
+
+    if missing_sale_types:
+        errors.append(_("Following items are missing Sale Type required for FBR:<br>{0}").format("<br>".join(missing_sale_types)))
+
+    if missing_tax_templates:
+        errors.append(_("Following items are missing Item Tax Templates required for FBR:<br>{0}").format("<br>".join(missing_tax_templates)))
 
 def get_fbr_warnings(doc):
     """Get FBR warnings (non-blocking issues)"""

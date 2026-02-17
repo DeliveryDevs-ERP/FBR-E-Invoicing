@@ -16,10 +16,8 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             from fbr_e_invoicing.api.build_fbr_payload import build_fbr_payload
             payload = build_fbr_payload(docname)
         elif doctype == "POS Invoice":  # POS Invoice
-            # Get payload from the document
-            if not doc.custom_payload:
-                frappe.throw("No FBR payload found. Please regenerate the payload.")
-            payload = json.loads(doc.custom_payload)
+            from fbr_e_invoicing.api.build_fbr_payload import build_pos_fbr_payload
+            payload = build_pos_fbr_payload(docname)
         else:
             frappe.throw("Unknown Doctype error in submit_single_invoice function")
             return 500

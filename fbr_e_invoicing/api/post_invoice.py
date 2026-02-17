@@ -34,21 +34,25 @@ def post(sales_invoice_name: str):
     seller_address = _get_party_address_text("Company", doc.customer)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
     # buyer_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
-    if frappe.db.get_value("Customer", doc.customer, "tax_id"):
-        buyer_tax_id = (
-            frappe.db.get_value("Customer", doc.customer, "tax_id")
-            if doc.customer
-            else None
+    customer_tax_data = {}
+    if doc.customer:
+        customer_tax_data = (
+            frappe.db.get_value(
+                "Customer",
+                doc.customer,
+                ["tax_id", "nic", "ntn", "customer_name"],
+                as_dict=True,
+            )
+            or {}
         )
-    elif doc.nic:
-        buyer_tax_id = normalise_cnic(doc.nic)
-    elif doc.ntn:
-        buyer_tax_id = doc.ntn
-    buyer_name = (
-        frappe.db.get_value("Customer", doc.customer, "customer_name")
-        if doc.customer
-        else None
-    )
+
+    buyer_tax_id = customer_tax_data.get("tax_id")
+    if not buyer_tax_id and customer_tax_data.get("nic"):
+        buyer_tax_id = normalise_cnic(customer_tax_data.get("nic"))
+    if not buyer_tax_id and customer_tax_data.get("ntn"):
+        buyer_tax_id = customer_tax_data.get("ntn")
+
+    buyer_name = customer_tax_data.get("customer_name") or doc.customer_name
     buyer_province = doc.tax_category
     buyer_address = _get_party_address_text("Customer", doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"

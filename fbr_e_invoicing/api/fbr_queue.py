@@ -291,7 +291,7 @@ def process_queue_item(queue_item):
                 "status", ""
             )
         else:  # POS Invoice
-            doc.custom_fbr_responce = json.dumps(response, indent=2)
+            doc.custom_fbr_response = json.dumps(response, indent=2)
             doc.custom_fbr_invoice_number = response.get("invoiceNumber", "")
             doc.custom_fbr_datetime = response.get("dated", "")
             doc.custom_fbr_status = response.get("validationResponse", {}).get(
