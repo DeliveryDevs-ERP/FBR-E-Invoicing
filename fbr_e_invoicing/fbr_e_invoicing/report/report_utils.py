@@ -138,8 +138,8 @@ def get_data(filters, province=None):
     """
     si = frappe.qb.DocType("Sales Invoice")
     sii = frappe.qb.DocType("Sales Invoice Item")
-    has_si_ntn = frappe.db.has_column("Sales Invoice", "ntn")
-    has_si_nic = frappe.db.has_column("Sales Invoice", "nic")
+    has_customer_ntn = frappe.db.has_column("Customer", "ntn")
+    has_customer_nic = frappe.db.has_column("Customer", "nic")
 
     select_fields = [
         sii.item_name,
@@ -157,11 +157,6 @@ def get_data(filters, province=None):
         si.custom_fbr_status,
         si.custom_fbr_invoice_number,
     ]
-    if has_si_ntn:
-        select_fields.append(si.ntn)
-    if has_si_nic:
-        select_fields.append(si.nic)
-
     # Base query
     query = (
         frappe.qb.from_(sii)
@@ -216,15 +211,20 @@ def get_data(filters, province=None):
 
     # Fetch Customer Types
     customer_ids = list(set([d.customer for d in items if d.customer]))
-    customer_type_map = {}
+    customer_info_map = {}
     if customer_ids:
+        customer_fields = ["name", "customer_type"]
+        if has_customer_ntn:
+            customer_fields.append("ntn")
+        if has_customer_nic:
+            customer_fields.append("nic")
         customers = frappe.get_all(
             "Customer",
             filters={"name": ["in", customer_ids]},
-            fields=["name", "customer_type"],
+            fields=customer_fields,
         )
         for c in customers:
-            customer_type_map[c.name] = c.customer_type
+            customer_info_map[c.name] = c
 
     data = []
     total_value = 0.0
@@ -232,10 +232,11 @@ def get_data(filters, province=None):
     sr_counter = 1
 
     for row in items:
-        c_type = customer_type_map.get(row.customer, "")
+        customer_info = customer_info_map.get(row.customer) or {}
+        c_type = customer_info.get("customer_type", "")
 
-        ntn = row.get("ntn") if has_si_ntn else None
-        cnic = row.get("nic") if has_si_nic else None
+        ntn = customer_info.get("ntn") if has_customer_ntn else None
+        cnic = customer_info.get("nic") if has_customer_nic else None
         display_ntn = (ntn or "") if c_type != "Individual" else ""
         display_cnic = (cnic or "") if c_type == "Individual" else ""
 
