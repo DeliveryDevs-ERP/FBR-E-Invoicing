@@ -283,7 +283,9 @@ def populate_provinces():
             ),
         }
     except Exception as e:
-        frappe.log_error(f"Province prepopulation failed: {str(e)}", "Province Population Failed")
+        frappe.log_error(
+            f"Province prepopulation failed: {str(e)}", "Province Population Failed"
+        )
         return {
             "success": False,
             "status_code": None,
@@ -328,8 +330,12 @@ def run_master_data_sync():
     if failed:
         message_parts = []
         for item in failed:
-            status_code = item["status_code"] if item["status_code"] is not None else "N/A"
-            response = frappe.utils.escape_html((item["response"] or "No response")[:1000])
+            status_code = (
+                item["status_code"] if item["status_code"] is not None else "N/A"
+            )
+            response = frappe.utils.escape_html(
+                (item["response"] or "No response")[:1000]
+            )
             message_parts.append(
                 f"<b>{item['function']}</b><br>"
                 f"Error Code: {status_code}<br>"
@@ -365,9 +371,13 @@ def run_post_migrate_sync():
     populate_provinces()
     hs_result = sync_hs_codes() or {}
     uom_result = sync_uoms() or {}
-    master_ok = hs_result.get("status_code") == 200 and uom_result.get("status_code") == 200
+    master_ok = (
+        hs_result.get("status_code") == 200 and uom_result.get("status_code") == 200
+    )
     if _has_setup_field("master_data_retrieved"):
-        frappe.db.set_single_value("FBR E-Inv Setup", "master_data_retrieved", 1 if master_ok else 0)
+        frappe.db.set_single_value(
+            "FBR E-Inv Setup", "master_data_retrieved", 1 if master_ok else 0
+        )
     from fbr_e_invoicing.tax_setup import setup_fbr_tax_artifacts
 
     setup_fbr_tax_artifacts()
@@ -436,24 +446,30 @@ def get_fbr_setup_status():
 
 def create_fbr_sale_types():
     """Create default FBR Sale Type records based on FBR scenarios."""
-    
+
     sale_types = [
-        {"scenario_id": "SN001", "name": "Goods at Standard Rate (default)"},
-        {"scenario_id": "SN002", "name": "Goods at Standard Rate (default)"},
-        {"scenario_id": "SN003", "name": "Steel Melting and re-rolling"},
+        {
+            "scenario_id": "SN001",
+            "name": "Goods at standard rate (default) - Registered Buyer",
+        },
+        {
+            "scenario_id": "SN002",
+            "name": "Goods at standard rate (default) - Unregistered Buyer",
+        },
+        {"scenario_id": "SN003", "name": "Steel melting and re-rolling"},
         {"scenario_id": "SN004", "name": "Ship breaking"},
         {"scenario_id": "SN005", "name": "Goods at Reduced Rate"},
-        {"scenario_id": "SN006", "name": "Exempt Goods"},
+        {"scenario_id": "SN006", "name": "Exempt goods"},
         {"scenario_id": "SN007", "name": "Goods at zero-rate"},
         {"scenario_id": "SN008", "name": "3rd Schedule Goods"},
-        {"scenario_id": "SN009", "name": "Cotton Ginners"},
+        {"scenario_id": "SN009", "name": "Cotton ginners"},
         {"scenario_id": "SN010", "name": "Telecommunication services"},
         {"scenario_id": "SN011", "name": "Toll Manufacturing"},
         {"scenario_id": "SN012", "name": "Petroleum Products"},
         {"scenario_id": "SN013", "name": "Electricity Supply to Retailers"},
         {"scenario_id": "SN014", "name": "Gas to CNG stations"},
         {"scenario_id": "SN015", "name": "Mobile Phones"},
-        {"scenario_id": "SN016", "name": "Processing/ Conversion of Goods"},
+        {"scenario_id": "SN016", "name": "Processing/Conversion of Goods"},
         {"scenario_id": "SN017", "name": "Goods (FED in ST Mode)"},
         {"scenario_id": "SN018", "name": "Services (FED in ST Mode)"},
         {"scenario_id": "SN019", "name": "Services"},
@@ -461,32 +477,39 @@ def create_fbr_sale_types():
         {"scenario_id": "SN021", "name": "Cement /Concrete Block"},
         {"scenario_id": "SN022", "name": "Potassium Chlorate"},
         {"scenario_id": "SN023", "name": "CNG Sales"},
-        {"scenario_id": "SN024", "name": "Goods as per SRO.297(|)/2023"},
+        {"scenario_id": "SN024", "name": "Goods as per SRO.297(I)/2023"},
         {"scenario_id": "SN025", "name": "Non-Adjustable Supplies"},
-        {"scenario_id": "SN026", "name": "Goods at Standard Rate (default)"},
-        {"scenario_id": "SN027", "name": "3rd Schedule Goods"},
-        {"scenario_id": "SN028", "name": "Goods at Reduced Rate"},
+        {
+            "scenario_id": "SN026",
+            "name": "Goods at Standard Rate (default) - End Consumer",
+        },
+        {"scenario_id": "SN027", "name": "3rd Schedule Goods - End Consumer"},
+        {"scenario_id": "SN028", "name": "Goods at Reduced Rate - End Consumer"},
     ]
-    
+
     for sale_type in sale_types:
         try:
             if not frappe.db.exists("FBR Sale Type", sale_type["name"]):
-                doc = frappe.get_doc({
-                    "doctype": "FBR Sale Type",
-                    "name": sale_type["name"],
-                    "scenario_id": sale_type["scenario_id"]
-                })
+                doc = frappe.get_doc(
+                    {
+                        "doctype": "FBR Sale Type",
+                        "name": sale_type["name"],
+                        "scenario_id": sale_type["scenario_id"],
+                    }
+                )
                 doc.insert(ignore_permissions=True)
                 frappe.logger().info(f"Created FBR Sale Type: {sale_type['name']}")
             else:
                 # Update scenario_id if record exists but scenario might be different
                 frappe.db.set_value(
-                    "FBR Sale Type", 
-                    sale_type["name"], 
-                    "scenario_id", 
-                    sale_type["scenario_id"]
+                    "FBR Sale Type",
+                    sale_type["name"],
+                    "scenario_id",
+                    sale_type["scenario_id"],
                 )
         except Exception as e:
-            frappe.logger().error(f"Error creating FBR Sale Type {sale_type['name']}: {str(e)}")
-    
+            frappe.logger().error(
+                f"Error creating FBR Sale Type {sale_type['name']}: {str(e)}"
+            )
+
     frappe.logger().info("FBR Sale Types populated successfully")

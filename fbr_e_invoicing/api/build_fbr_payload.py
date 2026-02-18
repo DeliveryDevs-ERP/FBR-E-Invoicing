@@ -4,6 +4,11 @@ import re
 
 
 STANDARD_RATE_SALE_TYPE = "Goods at standard rate (default)"
+STANDARD_RATE_SCENARIO_IDS = {"SN001", "SN002", "SN026"}
+REDUCED_RATE_SALE_TYPE = "Goods at Reduced Rate"
+REDUCED_RATE_SCENARIO_IDS = {"SN005", "SN028"}
+THIRD_SCHEDULE_SALE_TYPE = "3rd Schedule Goods"
+THIRD_SCHEDULE_SCENARIO_IDS = {"SN008", "SN027"}
 SANDBOX_MODE_LABEL = "Sandbox Testing"
 PRODUCTION_MODE_LABEL = "Production"
 MODE_SANDBOX = "sandbox"
@@ -134,6 +139,8 @@ def _build_invoice_payload(doc, invoice_type: str):
         tax_rate = _first_item_tax_rate(row.item_tax_template)
         value_excl_st = flt(row.rate)
         sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
+        raw_sale_type = str(row.custom_sale_type or "").strip()
+        payload_sale_type = map_sale_type_for_payload(raw_sale_type, buyer_registration_type)
 
         item_entry = {
             "hsCode": (row.custom_hs_code or ""),
@@ -151,7 +158,7 @@ def _build_invoice_payload(doc, invoice_type: str):
             "sroScheduleNo": "", 
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
-            "saleType": str(row.custom_sale_type or "").strip(),
+            "saleType": payload_sale_type,
             "sroItemSerialNo": ""
         }
         payload["items"].append(item_entry)
@@ -192,6 +199,30 @@ def get_scenario_id(sale_type: str, buyer_registration_type: str | None = None) 
         return scenario_id or ""
     except Exception:
         return ""
+
+
+def map_sale_type_for_payload(
+    sale_type: str, buyer_registration_type: str | None = None
+) -> str:
+    """
+    Normalize outgoing payload saleType while preserving scenario selection.
+
+    For scenarios that intentionally have UI-distinct labels, normalize outgoing
+    payload saleType to the canonical FBR value while keeping scenarioId unchanged.
+    """
+    normalized_sale_type = (sale_type or "").strip()
+    if not normalized_sale_type:
+        return ""
+
+    scenario_id = get_scenario_id(normalized_sale_type, buyer_registration_type)
+    if scenario_id in STANDARD_RATE_SCENARIO_IDS:
+        return STANDARD_RATE_SALE_TYPE
+    if scenario_id in REDUCED_RATE_SCENARIO_IDS:
+        return REDUCED_RATE_SALE_TYPE
+    if scenario_id in THIRD_SCHEDULE_SCENARIO_IDS:
+        return THIRD_SCHEDULE_SALE_TYPE
+
+    return normalized_sale_type
 
   
 def _get_party_address_text(link_doctype: str, link_name: str) -> str:

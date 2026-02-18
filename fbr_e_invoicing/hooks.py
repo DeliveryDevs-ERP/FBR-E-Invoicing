@@ -30,6 +30,7 @@ doc_events = {
     "POS Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
     },
     "Customer": {
         "validate": "fbr_e_invoicing.tax_setup.set_customer_tax_category",
