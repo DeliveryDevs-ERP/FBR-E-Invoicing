@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 
 def get_columns(filters, province=None):
@@ -144,9 +145,8 @@ def get_data(filters, province=None):
     select_fields = [
         sii.item_name,
         sii.net_amount,
+        sii.item_tax_template,
         sii.custom_hs_code,
-        sii.custom_tax_rate,
-        sii.custom_tax_amount,
         sii.custom_sale_type,
         sii.parent,
         si.posting_date,
@@ -230,6 +230,7 @@ def get_data(filters, province=None):
     total_value = 0.0
     total_tax = 0.0
     sr_counter = 1
+    item_tax_template_rate_cache = {}
 
     for row in items:
         customer_info = customer_info_map.get(row.customer) or {}
@@ -240,8 +241,11 @@ def get_data(filters, province=None):
         display_ntn = (ntn or "") if c_type != "Individual" else ""
         display_cnic = (cnic or "") if c_type == "Individual" else ""
 
-        row_val = row.net_amount or 0.0
-        row_tax = row.custom_tax_amount or 0.0
+        row_val = flt(row.net_amount or 0.0)
+        row_tax_rate = _first_item_tax_rate(
+            row.item_tax_template, item_tax_template_rate_cache
+        )
+        row_tax = round((row_tax_rate * row_val) / 100.0, 2)
 
         # NEW CODE - Treat NULL/empty as Invalid
         fbr_status = row.custom_fbr_status or "Invalid"  # Default to Invalid if empty
@@ -264,7 +268,7 @@ def get_data(filters, province=None):
             "doc_date": row.posting_date,
             "hs_code": row.custom_hs_code,
             "sale_type": row.custom_sale_type,
-            "rate": row.custom_tax_rate,
+            "rate": row_tax_rate,
             "value_excl_tax": row_val,
             "sales_tax": row_tax,
             "fbr_status": fbr_status,
@@ -312,6 +316,30 @@ def get_data(filters, province=None):
         data.append(total_row)
 
     return data
+
+
+def _first_item_tax_rate(item_tax_template_name, cache=None):
+    """
+    Match payload tax-rate source:
+    first tax row rate from Item Tax Template.
+    """
+    if not item_tax_template_name:
+        return 0.0
+
+    if cache is not None and item_tax_template_name in cache:
+        return cache[item_tax_template_name]
+
+    tax_rate = 0.0
+    try:
+        item_tax_template = frappe.get_doc("Item Tax Template", item_tax_template_name)
+        if getattr(item_tax_template, "taxes", None):
+            tax_rate = flt(item_tax_template.taxes[0].tax_rate)
+    except Exception:
+        tax_rate = 0.0
+
+    if cache is not None:
+        cache[item_tax_template_name] = tax_rate
+    return tax_rate
 
 
 def get_province_specific_fields(province):
