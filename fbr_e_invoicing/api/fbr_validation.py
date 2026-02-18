@@ -1,60 +1,61 @@
 import frappe
 from frappe import _
 from datetime import datetime
+from time import perf_counter
 from frappe.utils import nowdate, now_datetime
+import requests
+from requests.exceptions import RequestException
 
 def validate_fbr_fields(doc, method):
     """Validate FBR required fields before saving Sales Invoice"""
     if not doc.custom_submit_to_fbr:
         return
 
+    errors = _collect_sales_invoice_errors(doc, show_messages=True)
+
+    # If there are validation errors, prevent save
+    if errors:
+        frappe.throw("<br>".join(errors), title=_("FBR Validation Failed"))
+
+
+def _collect_sales_invoice_errors(doc, show_messages=False):
+    # Intentionally retained as requested: posting date is forced on validate.
     doc.posting_date = nowdate()
     errors = []
-    
+
     # Check if FBR setup is configured
     fbr_settings = frappe.get_single("FBR E-Inv Setup")
     if not fbr_settings.api_endpoint:
         errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
-    
-    # Validate posting date (should be current date for FBR)
-    # if doc.docstatus == 0:  # Only validate for draft documents
-    #     today = frappe.utils.getdate()
-    #     if doc.posting_date != today:
-    #         frappe.msgprint(
-    #             _("Warning: FBR requires posting date to be current date ({0}) for successful submission").format(today),
-    #             alert=True,
-    #             indicator='orange'
-    #         )
-    
+
     # Check required FBR fields
     if not doc.custom_province:
         errors.append(_("Seller Province is required for FBR submission"))
-    
+
     if not doc.tax_category:
         errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
-    
+
     # Validate customer tax information
     if doc.customer:
         customer = frappe.get_doc("Customer", doc.customer)
-        if not customer.tax_id and not customer.custom_province:
+        if not customer.tax_id and not customer.custom_province and show_messages:
             frappe.msgprint(
-                _("Customer {0} is missing Tax ID or Province information required for FBR").format(customer.customer_name),
+                _("Customer {0} is missing Tax ID or Province information required for FBR").format(
+                    customer.customer_name
+                ),
                 alert=True,
-                indicator='orange'
+                indicator="orange",
             )
-    
+
     # Validate company tax information
     if doc.company:
         company = frappe.get_doc("Company", doc.company)
         if not company.tax_id:
             errors.append(_("Company Tax ID is required for FBR submission"))
-    
+
     # Validate items
     validate_fbr_items(doc, errors)
-    
-    # If there are validation errors, prevent save
-    if errors:
-        frappe.throw("<br>".join(errors), title=_("FBR Validation Failed"))
+    return errors
 
 def validate_fbr_items(doc, errors):
     """Validate FBR specific item requirements"""
@@ -73,12 +74,6 @@ def validate_fbr_items(doc, errors):
         # Check Item Tax Template
         if not item.item_tax_template:
             missing_tax_templates.append(f"Row {idx}: {item.item_name}")
-        
-        # Validate item master data
-        item_master = frappe.get_doc("Item", item.item_code)
-        if not item_master.custom_hs_code and not item.custom_hs_code:
-            # Item doesn't have HS code in master or transaction
-            continue
     
     if missing_hs_codes:
         errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
@@ -94,7 +89,7 @@ def validate_fbr_document(doctype, docname):
         errors = []
         
         if doctype == "Sales Invoice":
-            validate_fbr_fields(doc, None)
+            errors.extend(_collect_sales_invoice_errors(doc, show_messages=False))
         elif doctype == "POS Invoice":
             validate_pos_invoice_fbr(doc, errors)
         
@@ -161,6 +156,17 @@ def validate_pos_invoice_fbr(doc, errors):
     if missing_tax_templates:
         errors.append(_("Following items are missing Item Tax Templates required for FBR:<br>{0}").format("<br>".join(missing_tax_templates)))
 
+
+def validate_pos_invoice_fields(doc, method=None):
+    """Validate POS Invoice FBR fields using server-side hook."""
+    if not doc.custom_submit_to_fbr:
+        return
+
+    errors = []
+    validate_pos_invoice_fbr(doc, errors)
+    if errors:
+        frappe.throw("<br>".join(errors), title=_("FBR Validation Failed"))
+
 def get_fbr_warnings(doc):
     """Get FBR warnings (non-blocking issues)"""
     warnings = []
@@ -192,18 +198,62 @@ def check_fbr_api_status():
                 "status": "error",
                 "message": _("FBR API endpoint not configured")
             }
-        
-        # In production, add actual API health check
-        # response = requests.get(f"{fbr_settings.api_endpoint}/health", timeout=5)
-        
-        # Mock response for now
+
+        api_endpoint = (fbr_settings.api_endpoint or "").strip()
+        token = (fbr_settings.pral_authorization_token or "").strip()
+        verify_ssl = getattr(fbr_settings, "verify_ssl", True)
+        connect_timeout = float(getattr(fbr_settings, "connect_timeout", 5.0))
+        read_timeout = float(getattr(fbr_settings, "read_timeout", 10.0))
+
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
+        start_time = perf_counter()
+        response = requests.get(
+            api_endpoint,
+            headers=headers,
+            timeout=(connect_timeout, read_timeout),
+            verify=bool(verify_ssl),
+        )
+        elapsed_ms = round((perf_counter() - start_time) * 1000, 2)
+
+        response_data = {}
+        try:
+            response_data = response.json() if response.text else {}
+        except ValueError:
+            response_data = {}
+
+        api_version = ""
+        if isinstance(response_data, dict):
+            api_version = str(
+                response_data.get("apiVersion")
+                or response_data.get("api_version")
+                or ""
+            )
+
+        if response.status_code >= 400:
+            return {
+                "status": "error",
+                "message": _("FBR API responded with HTTP {0}").format(response.status_code),
+                "http_status_code": response.status_code,
+                "api_version": api_version,
+                "response_time_ms": elapsed_ms,
+            }
+
         return {
             "status": "success",
             "message": _("FBR API is accessible"),
-            "api_version": "1.0",
-            "response_time": "150ms"
+            "http_status_code": response.status_code,
+            "api_version": api_version,
+            "response_time_ms": elapsed_ms,
         }
         
+    except RequestException as e:
+        return {
+            "status": "error",
+            "message": f"FBR API check failed: {str(e)}"
+        }
     except Exception as e:
         return {
             "status": "error",
@@ -279,7 +329,6 @@ def get_fbr_compliance_report(from_date=None, to_date=None):
             "error": str(e)
         }
 
-from frappe.utils import nowdate, now_datetime
 def force_today_posting_date(doc, method):
     """Force posting_date/time to 'today' at submit time."""
     doc.set_posting_time = 1
