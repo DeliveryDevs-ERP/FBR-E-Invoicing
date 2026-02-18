@@ -7,8 +7,10 @@
  "field_order": [
   "pral_authorization_token",
   "api_endpoint",
+  "mode",
   "is_api_token_valid",
   "hs_codes_retrieved",
+  "master_data_retrieved",
   "column_break_kruy",
   "pral_login_id",
   "pral_login_password"
@@ -55,12 +57,30 @@
    "hidden": 1,
    "label": "HS Codes Retrieved",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "master_data_retrieved",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Master Data Retrieved",
+   "read_only": 1
+  },
+  {
+   "default": "Sandbox Testing",
+   "description": "Please make sure your API endpoint corresponds to your selected mode.",
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Mode",
+   "options": "Sandbox Testing\nProduction",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-15 15:38:18.767491",
+ "modified": "2026-02-18 14:39:05.168341",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",

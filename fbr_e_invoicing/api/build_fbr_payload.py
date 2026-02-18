@@ -2,6 +2,41 @@ import frappe
 from frappe.utils import flt, formatdate
 import re
 
+
+STANDARD_RATE_SALE_TYPE = "Goods at standard rate (default)"
+SANDBOX_MODE_LABEL = "Sandbox Testing"
+PRODUCTION_MODE_LABEL = "Production"
+MODE_SANDBOX = "sandbox"
+MODE_PRODUCTION = "production"
+
+FBR_MODE_MAP = {
+    SANDBOX_MODE_LABEL.casefold(): MODE_SANDBOX,
+    PRODUCTION_MODE_LABEL.casefold(): MODE_PRODUCTION,
+}
+
+def _mode_error_message(configured_mode: str | None = None) -> str:
+    configured = (configured_mode or "").strip()
+    configured_display = configured or "blank"
+    return (
+        "Invalid Mode in 'FBR E-Inv Setup'. "
+        f"Current value: '{configured_display}'. "
+        f"Please set Mode to '{SANDBOX_MODE_LABEL}' or '{PRODUCTION_MODE_LABEL}'."
+    )
+
+
+def _resolve_fbr_mode_or_throw() -> str:
+    configured_mode = (
+        frappe.db.get_single_value("FBR E-Inv Setup", "mode")
+        if frappe.db.exists("DocType", "FBR E-Inv Setup")
+        else ""
+    )
+    normalized_mode = (configured_mode or "").strip().casefold()
+    mode = FBR_MODE_MAP.get(normalized_mode)
+    if not mode:
+        raise frappe.ValidationError(_mode_error_message(configured_mode))
+    return mode
+
+
 def normalise_cnic(value: str | None) -> str:
     """
     Normalize CNIC/NTN/Tax IDs by removing non-digits (hyphens, spaces, etc.)
@@ -66,6 +101,7 @@ def _build_invoice_payload(doc, invoice_type: str):
     seller_address = _get_party_address_text('Company', doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
     first_sale_type = doc.items[0].custom_sale_type if doc.items else ""
+    fbr_mode = _resolve_fbr_mode_or_throw()
 
     # --- Invoice-level fields ---
     payload = {
@@ -81,9 +117,17 @@ def _build_invoice_payload(doc, invoice_type: str):
         "buyerAddress": (buyer_address or ""),
         "buyerRegistrationType": buyer_registration_type,
         "invoiceRefNo": "",
-        "scenarioId": get_scenario_id(first_sale_type),
         "items": []
     }
+    if fbr_mode == MODE_SANDBOX:
+        scenario_id = get_scenario_id(first_sale_type, buyer_registration_type)
+        if not scenario_id:
+            raise frappe.ValidationError(
+                "Unable to resolve Scenario ID for Sandbox Testing mode. "
+                "Please set a valid Sale Type on invoice items and ensure related "
+                "FBR Sale Type mapping is configured."
+            )
+        payload["scenarioId"] = scenario_id
 
     # --- Items mapping ---
     for row in (doc.items or []):
@@ -95,7 +139,7 @@ def _build_invoice_payload(doc, invoice_type: str):
             "hsCode": (row.custom_hs_code or ""),
             "productDescription": (row.description or row.item_name or ""),
             "rate": format_rate(tax_rate),
-            "uoM": (row.stock_uom or ""),
+            "uoM": str(row.stock_uom or row.uom or "").strip(),
             "quantity": flt(row.qty),
             "totalValues": 0.00,
             "valueSalesExcludingST": value_excl_st,
@@ -107,7 +151,7 @@ def _build_invoice_payload(doc, invoice_type: str):
             "sroScheduleNo": "", 
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
-            "saleType": (row.custom_sale_type or ""),
+            "saleType": str(row.custom_sale_type or "").strip(),
             "sroItemSerialNo": ""
         }
         payload["items"].append(item_entry)
@@ -123,19 +167,26 @@ def format_rate(tax_rate):
         return f"{value}%"
     
 
-def get_scenario_id(sale_type: str) -> str:
+def get_scenario_id(sale_type: str, buyer_registration_type: str | None = None) -> str:
     """
     Fetch scenario_id from FBR Sale Type doctype
     based on the given sale_type.
     Returns empty string if not found.
     """
-    if not sale_type:
+    normalized_sale_type = (sale_type or "").strip()
+    if not normalized_sale_type:
         return ""
+
+    # Standard-rate scenario must be deterministic for production use:
+    # SN001 for registered buyers and SN002 for unregistered buyers.
+    if normalized_sale_type.casefold() == STANDARD_RATE_SALE_TYPE.casefold():
+        registration = (buyer_registration_type or "").strip().lower()
+        return "SN001" if registration == "registered" else "SN002"
 
     try:
         scenario_id = frappe.db.get_value(
             "FBR Sale Type",   # Doctype name
-            {"name": sale_type},   # or use {"sale_type": sale_type} if field differs
+            {"name": normalized_sale_type},   # or use {"sale_type": sale_type} if field differs
             "scenario_id"
         )
         return scenario_id or ""
