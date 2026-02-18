@@ -5,6 +5,30 @@ from time import perf_counter
 from frappe.utils import nowdate, now_datetime
 import requests
 from requests.exceptions import RequestException
+from urllib.parse import urlparse
+
+FBR_MODE_SANDBOX = "sandbox testing"
+FBR_MODE_PRODUCTION = "production"
+
+
+def _append_mode_validation_error(errors):
+    configured_mode = (
+        frappe.db.get_single_value("FBR E-Inv Setup", "mode")
+        if frappe.db.exists("DocType", "FBR E-Inv Setup")
+        else ""
+    )
+    normalized_mode = (configured_mode or "").strip().casefold()
+    if normalized_mode in {FBR_MODE_SANDBOX, FBR_MODE_PRODUCTION}:
+        return
+
+    configured_display = (configured_mode or "").strip() or "blank"
+    errors.append(
+        _(
+            "Invalid Mode in FBR E-Inv Setup (current: {0}). "
+            "Please set Mode to Sandbox Testing or Production."
+        ).format(configured_display)
+    )
+
 
 def validate_fbr_fields(doc, method):
     """Validate FBR required fields before saving Sales Invoice"""
@@ -27,6 +51,7 @@ def _collect_sales_invoice_errors(doc, show_messages=False):
     fbr_settings = frappe.get_single("FBR E-Inv Setup")
     if not fbr_settings.api_endpoint:
         errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
+    _append_mode_validation_error(errors)
 
     # Check required FBR fields
     if not doc.custom_province:
@@ -64,6 +89,7 @@ def validate_fbr_items(doc, errors):
         return
     
     missing_hs_codes = []
+    missing_sale_types = []
     missing_tax_templates = []
     
     for idx, item in enumerate(doc.items, 1):
@@ -74,12 +100,23 @@ def validate_fbr_items(doc, errors):
         # Check Item Tax Template
         if not item.item_tax_template:
             missing_tax_templates.append(f"Row {idx}: {item.item_name}")
+
+        # Check Sale Type
+        if not item.custom_sale_type:
+            missing_sale_types.append(f"Row {idx}: {item.item_name}")
     
     if missing_hs_codes:
         errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
     
     if missing_tax_templates:
         errors.append(_("Following items are missing Item Tax Templates required for FBR:<br>{0}").format("<br>".join(missing_tax_templates)))
+
+    if missing_sale_types:
+        errors.append(
+            _("Following items are missing Sale Type required for FBR:<br>{0}").format(
+                "<br>".join(missing_sale_types)
+            )
+        )
 
 @frappe.whitelist()
 def validate_fbr_document(doctype, docname):
@@ -108,6 +145,8 @@ def validate_fbr_document(doctype, docname):
 
 def validate_pos_invoice_fbr(doc, errors):
     """Validate POS Invoice for FBR submission"""
+    _append_mode_validation_error(errors)
+
     # POS Invoice specific validations
     if not doc.pos_profile:
         errors.append(_("POS Profile is required"))
@@ -200,6 +239,7 @@ def check_fbr_api_status():
             }
 
         api_endpoint = (fbr_settings.api_endpoint or "").strip()
+        healthcheck_url = _resolve_healthcheck_url(api_endpoint)
         token = (fbr_settings.pral_authorization_token or "").strip()
         verify_ssl = getattr(fbr_settings, "verify_ssl", True)
         connect_timeout = float(getattr(fbr_settings, "connect_timeout", 5.0))
@@ -211,7 +251,7 @@ def check_fbr_api_status():
 
         start_time = perf_counter()
         response = requests.get(
-            api_endpoint,
+            healthcheck_url,
             headers=headers,
             timeout=(connect_timeout, read_timeout),
             verify=bool(verify_ssl),
@@ -239,6 +279,7 @@ def check_fbr_api_status():
                 "http_status_code": response.status_code,
                 "api_version": api_version,
                 "response_time_ms": elapsed_ms,
+                "checked_url": healthcheck_url,
             }
 
         return {
@@ -247,6 +288,7 @@ def check_fbr_api_status():
             "http_status_code": response.status_code,
             "api_version": api_version,
             "response_time_ms": elapsed_ms,
+            "checked_url": healthcheck_url,
         }
         
     except RequestException as e:
@@ -335,3 +377,16 @@ def force_today_posting_date(doc, method):
     doc.posting_date = nowdate()
     if hasattr(doc, "posting_time"):
         doc.posting_time = now_datetime().time()
+
+
+def _resolve_healthcheck_url(api_endpoint: str) -> str:
+    """Use a stable GET-able reference API endpoint for diagnostics."""
+    endpoint = (api_endpoint or "").strip()
+    if not endpoint:
+        return "https://gw.fbr.gov.pk/pdi/v1/provinces"
+
+    parsed = urlparse(endpoint)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}/pdi/v1/provinces"
+
+    return "https://gw.fbr.gov.pk/pdi/v1/provinces"

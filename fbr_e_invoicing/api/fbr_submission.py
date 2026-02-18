@@ -138,6 +138,34 @@ def submit_single_invoice(doctype, docname, is_retry=False):
     result.update(fallback_response)
     return result
 
+
+def submit_pos_invoice_on_submit(doc, method=None):
+    """Server-side POS fallback to keep submission reliable without client scripts."""
+    if not getattr(doc, "custom_submit_to_fbr", 0):
+        return
+
+    if getattr(doc, "custom_fbr_invoice_number", ""):
+        return
+
+    try:
+        submission_result = submit_single_invoice("POS Invoice", doc.name, is_retry=False)
+        response = submission_result.get("response") or {}
+        if isinstance(response, dict) and response:
+            _persist_fbr_response_fields("POS Invoice", doc.name, response)
+
+        if not submission_result.get("success"):
+            frappe.log_error(
+                f"POS Invoice {doc.name} FBR submit fallback failed: "
+                f"{submission_result.get('message') or 'Unknown error'}",
+                "FBR POS Auto Submit Fallback",
+            )
+    except Exception as e:
+        frappe.log_error(
+            f"Error in POS Invoice fallback submit for {doc.name}: {str(e)}",
+            "FBR POS Auto Submit Fallback",
+        )
+
+
 @frappe.whitelist()
 def bulk_submit_invoices(doctype, docnames):
     """Submit multiple invoices to FBR queue"""
@@ -463,6 +491,29 @@ def _auto_queue_failed_submission(doctype, docname, error_message, is_retry):
             "FBR Auto Queue Failure",
         )
 
+    return None
+
+
+def _persist_fbr_response_fields(doctype, docname, response):
+    update_values = {
+        "custom_fbr_invoice_number": response.get("invoiceNumber", ""),
+        "custom_fbr_datetime": response.get("dated", ""),
+        "custom_fbr_status": response.get("validationResponse", {}).get("status", ""),
+    }
+
+    response_field = _get_response_storage_field(doctype)
+    if response_field:
+        update_values[response_field] = json.dumps(response, indent=2)
+
+    frappe.db.set_value(doctype, docname, update_values)
+
+
+def _get_response_storage_field(doctype):
+    fields = set(frappe.db.get_table_columns(doctype) or [])
+    if "custom_fbr_response" in fields:
+        return "custom_fbr_response"
+    if "custom_fbr_responce" in fields:
+        return "custom_fbr_responce"
     return None
 
 

@@ -1,5 +1,10 @@
 import frappe
-from fbr_e_invoicing.utils import sync_hs_codes, populate_provinces, create_fbr_sale_types
+from fbr_e_invoicing.utils import (
+    sync_hs_codes,
+    sync_uoms,
+    populate_provinces,
+    create_fbr_sale_types,
+)
 
 
 def execute():
@@ -8,5 +13,6 @@ def execute():
     frappe.reload_doc("fbr_e_invoicing", "doctype", "hs_code")
     # 2. Now it is safe to insert data
     sync_hs_codes()
+    sync_uoms()
     populate_provinces()
     create_fbr_sale_types()

@@ -1,5 +1,4 @@
 import frappe
-import json
 from frappe.utils import add_to_date, cint, get_datetime, now, now_datetime
 
 
@@ -359,7 +358,10 @@ def _process_single_queue_item(queue_item_name):
 def process_queue_item(queue_item):
     """Process a single queue item."""
     try:
-        from fbr_e_invoicing.api.fbr_submission import submit_single_invoice
+        from fbr_e_invoicing.api.fbr_submission import (
+            _persist_fbr_response_fields,
+            submit_single_invoice,
+        )
 
         submission_result = submit_single_invoice(
             queue_item.document_type, queue_item.document_name, is_retry=True
@@ -371,17 +373,10 @@ def process_queue_item(queue_item):
             }
 
         response = submission_result.get("response") or {}
-        frappe.db.set_value(
+        _persist_fbr_response_fields(
             queue_item.document_type,
             queue_item.document_name,
-            {
-                "custom_fbr_response": json.dumps(response, indent=2),
-                "custom_fbr_invoice_number": response.get("invoiceNumber", ""),
-                "custom_fbr_datetime": response.get("dated", ""),
-                "custom_fbr_status": response.get("validationResponse", {}).get(
-                    "status", ""
-                ),
-            },
+            response,
         )
 
         status = response.get("validationResponse", {}).get("status", "")

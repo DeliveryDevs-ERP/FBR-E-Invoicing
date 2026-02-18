@@ -3,10 +3,10 @@
 
 frappe.ui.form.on("FBR E-Inv Setup", {
 	refresh(frm) {
-		toggle_fetch_hs_codes_button(frm);
+		toggle_fetch_master_data_button(frm);
 	},
 	after_save(frm) {
-		toggle_fetch_hs_codes_button(frm);
+		toggle_fetch_master_data_button(frm);
 	},
 });
 
@@ -16,8 +16,8 @@ function has_required_fbr_credentials(frm) {
 	return Boolean(api_endpoint && pral_authorization_token);
 }
 
-function toggle_fetch_hs_codes_button(frm) {
-	const label = __("Fetch HS Codes");
+function toggle_fetch_master_data_button(frm) {
+	const label = __("Fetch Master Data");
 	frm.page.remove_inner_button(label);
 
 	if (!has_required_fbr_credentials(frm)) {
@@ -28,7 +28,7 @@ function toggle_fetch_hs_codes_button(frm) {
 		frappe.call({
 			method: "fbr_e_invoicing.utils.run_master_data_sync",
 			freeze: true,
-			freeze_message: __("Fetching HS Codes..."),
+			freeze_message: __("Fetching Master Data..."),
 			callback: () => frm.reload_doc(),
 		});
 	});

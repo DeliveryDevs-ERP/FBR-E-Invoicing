@@ -128,6 +128,16 @@ def _create_taxes_template(doctype, company, title, tax_category, rows):
     if existing:
         return existing, False
 
+    # ERPNext allows only one template per tax category.
+    if tax_category:
+        existing_for_tax_category = frappe.db.get_value(
+            doctype,
+            {"company": company, "tax_category": tax_category},
+            "name",
+        )
+        if existing_for_tax_category:
+            return existing_for_tax_category, False
+
     cost_center = frappe.db.get_value("Company", company, "cost_center")
     template_rows = []
     for row in rows:
@@ -158,8 +168,8 @@ def _create_taxes_template(doctype, company, title, tax_category, rows):
         return doc.name, True
     except Exception as e:
         frappe.log_error(
-            f"Unable to create template {title} ({doctype}) for {company}: {e}",
-            "FBR Tax Setup",
+            title="FBR Tax Setup",
+            message=f"Unable to create template {title} ({doctype}) for {company}: {e}",
         )
         return None, False
 

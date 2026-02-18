@@ -12,34 +12,45 @@ HARDCODED_PROVINCES = [
     "AZAD JAMMU AND KASHMIR",
 ]
 
+FBR_HS_CODE_URL = "https://gw.fbr.gov.pk/pdi/v1/itemdesccode"
+FBR_UOM_URL = "https://gw.fbr.gov.pk/pdi/v1/uom"
 
-def sync_hs_codes():
+
+def _get_pral_token():
     auth_token = None
-    # 1. Try DocType
     if frappe.db.exists("DocType", "FBR E-Inv Setup"):
         auth_token = frappe.db.get_single_value(
             "FBR E-Inv Setup", "pral_authorization_token"
         )
     if not auth_token:
         auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
-    # 3. Fail Gracefully
+    return (auth_token or "").strip()
+
+
+def _has_setup_field(fieldname):
+    if not frappe.db.exists("DocType", "FBR E-Inv Setup"):
+        return False
+    try:
+        return bool(frappe.get_meta("FBR E-Inv Setup").has_field(fieldname))
+    except Exception:
+        return False
+
+
+def sync_hs_codes():
+    auth_token = _get_pral_token()
     if not auth_token:
-        # print("WARNING: PRAL Access token not found. Skipping Sync.")
         return {
             "success": False,
             "status_code": None,
             "response": "PRAL Access token not found. Skipping Sync.",
         }
 
-    # --- Proceed with Sync ---
-    url = "https://gw.fbr.gov.pk/pdi/v1/itemdesccode"
     headers = {
         "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json",
     }
     try:
-        # 1. Make the GET request
-        response = requests.get(url, headers=headers)
+        response = requests.get(FBR_HS_CODE_URL, headers=headers, timeout=30)
         if response.status_code != 200:
             frappe.log_error(
                 f"FBR API Error [{response.status_code}]: {response.text}",
@@ -54,12 +65,9 @@ def sync_hs_codes():
         data = response.json()
         inserted_count = 0
         updated_count = 0
-        # 2. Iterate through the list
         for item in data:
-            # Extract fields using the EXACT keys from the image
             hs_code = item.get("hS_CODE")
             description = item.get("description")
-            # 3. Insert into Frappe (Idempotent check)
             if not hs_code:
                 continue
 
@@ -81,9 +89,6 @@ def sync_hs_codes():
                     }
                 ).insert(ignore_permissions=True)
                 inserted_count += 1
-
-        if frappe.db.exists("DocType", "FBR E-Inv Setup"):
-            frappe.db.set_single_value("FBR E-Inv Setup", "hs_codes_retrieved", 1)
 
         print(
             f"Successfully synced {len(data)} HS Codes. "
@@ -114,6 +119,140 @@ def sync_hs_codes():
         return {
             "success": False,
             "status_code": None,
+            "response": str(e),
+        }
+
+
+def sync_uoms(uom_payload=None):
+    """Sync FBR-approved UOMs into ERPNext UOM as add/enable-only."""
+    response = None
+    if uom_payload is None:
+        auth_token = _get_pral_token()
+        if not auth_token:
+            return {
+                "success": False,
+                "status_code": None,
+                "response": "PRAL Access token not found. Skipping Sync.",
+            }
+
+        headers = {
+            "Authorization": f"Bearer {auth_token}",
+            "Content-Type": "application/json",
+        }
+        try:
+            response = requests.get(FBR_UOM_URL, headers=headers, timeout=30)
+            if response.status_code != 200:
+                frappe.log_error(
+                    f"FBR API Error [{response.status_code}]: {response.text}",
+                    "UOM Sync Failed",
+                )
+                return {
+                    "success": False,
+                    "status_code": response.status_code,
+                    "response": response.text,
+                }
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            frappe.log_error(f"FBR API Error: {str(e)}", "UOM Sync Failed")
+            return {
+                "success": False,
+                "status_code": None,
+                "response": str(e),
+            }
+    else:
+        data = uom_payload
+
+    try:
+        if not isinstance(data, list):
+            return {
+                "success": False,
+                "status_code": (response.status_code if response else None),
+                "response": "Invalid UOM payload format: expected a list.",
+            }
+
+        fetched_count = len(data)
+        inserted_count = 0
+        enabled_count = 0
+        skipped_count = 0
+
+        seen = set()
+        unique_uoms = []
+        for item in data:
+            if not isinstance(item, dict):
+                skipped_count += 1
+                continue
+
+            description = (
+                item.get("description")
+                or item.get("uom")
+                or item.get("uoM")
+                or item.get("uom_name")
+                or ""
+            )
+            description = str(description).strip()
+            if not description:
+                skipped_count += 1
+                continue
+
+            normalized = description.casefold()
+            if normalized in seen:
+                skipped_count += 1
+                continue
+
+            seen.add(normalized)
+            unique_uoms.append(description)
+
+        for description in unique_uoms:
+            existing = frappe.db.get_value(
+                "UOM",
+                {"uom_name": description},
+                ["name", "enabled"],
+                as_dict=True,
+            )
+            if existing:
+                if int(existing.enabled or 0) != 1:
+                    frappe.db.set_value(
+                        "UOM",
+                        existing.name,
+                        "enabled",
+                        1,
+                        update_modified=False,
+                    )
+                    enabled_count += 1
+                else:
+                    skipped_count += 1
+                continue
+
+            frappe.get_doc(
+                {
+                    "doctype": "UOM",
+                    "uom_name": description,
+                    "enabled": 1,
+                }
+            ).insert(ignore_permissions=True)
+            inserted_count += 1
+
+        summary = (
+            f"Successfully synced UOMs. Fetched: {fetched_count}, "
+            f"Unique: {len(unique_uoms)}, Inserted: {inserted_count}, "
+            f"Enabled: {enabled_count}, Skipped: {skipped_count}."
+        )
+        print(summary)
+        return {
+            "success": True,
+            "status_code": (response.status_code if response else 200),
+            "response": summary,
+            "fetched_count": fetched_count,
+            "unique_count": len(unique_uoms),
+            "inserted_count": inserted_count,
+            "enabled_count": enabled_count,
+            "skipped_count": skipped_count,
+        }
+    except Exception as e:
+        frappe.log_error(f"Sync Logic Error: {str(e)}", "UOM Sync Failed")
+        return {
+            "success": False,
+            "status_code": (response.status_code if response else None),
             "response": str(e),
         }
 
@@ -158,11 +297,13 @@ def populate_provinces():
 
 @frappe.whitelist()
 def run_master_data_sync():
-    """Run HS Code sync and report failures in UI popup."""
+    """Run HS Code + UOM sync and report failures in UI popup."""
     hs_result = sync_hs_codes()
+    uom_result = sync_uoms()
 
     results = {
         "sync_hs_codes": hs_result or {},
+        "sync_uoms": uom_result or {},
     }
 
     failed = []
@@ -176,6 +317,13 @@ def run_master_data_sync():
                     "response": result.get("response"),
                 }
             )
+
+    if _has_setup_field("master_data_retrieved"):
+        frappe.db.set_single_value(
+            "FBR E-Inv Setup",
+            "master_data_retrieved",
+            0 if failed else 1,
+        )
 
     if failed:
         message_parts = []
@@ -205,7 +353,7 @@ def run_master_data_sync():
         return {"success": False, "results": results}
 
     frappe.msgprint(
-        msg="HS Codes synced successfully.",
+        msg="Master Data synced successfully (HS Codes + UOMs).",
         title="FBR Sync",
         indicator="green",
     )
@@ -213,20 +361,20 @@ def run_master_data_sync():
 
 
 def run_post_migrate_sync():
-    """Post-migration sync for static Province data and HS Codes."""
+    """Post-migration sync for static Province, HS Code, and UOM master data."""
     populate_provinces()
-    sync_hs_codes()
+    hs_result = sync_hs_codes() or {}
+    uom_result = sync_uoms() or {}
+    master_ok = hs_result.get("status_code") == 200 and uom_result.get("status_code") == 200
+    if _has_setup_field("master_data_retrieved"):
+        frappe.db.set_single_value("FBR E-Inv Setup", "master_data_retrieved", 1 if master_ok else 0)
     from fbr_e_invoicing.tax_setup import setup_fbr_tax_artifacts
 
     setup_fbr_tax_artifacts()
 
 
 def is_api_key_valid():
-    auth_token = None
-    if frappe.db.exists("DocType", "FBR E-Inv Setup"):
-        auth_token = frappe.db.get_single_value(
-            "FBR E-Inv Setup", "pral_authorization_token"
-        )
+    auth_token = _get_pral_token()
 
     if not auth_token:
         return False
@@ -265,22 +413,24 @@ def get_fbr_setup_status():
     token = (
         frappe.db.get_single_value("FBR E-Inv Setup", "pral_authorization_token") or ""
     ).strip()
-    hs_codes_retrieved = frappe.db.get_single_value(
-        "FBR E-Inv Setup", "hs_codes_retrieved"
+    master_data_retrieved = (
+        frappe.db.get_single_value("FBR E-Inv Setup", "master_data_retrieved")
+        if _has_setup_field("master_data_retrieved")
+        else 0
     )
 
     endpoint_missing = not api_endpoint
     token_missing = not token
     try:
-        hs_codes_missing = int(hs_codes_retrieved or 0) != 1
+        master_data_missing = int(master_data_retrieved or 0) != 1
     except (TypeError, ValueError):
-        hs_codes_missing = True
+        master_data_missing = True
 
     return {
         "endpoint_missing": endpoint_missing,
         "token_missing": token_missing,
-        "hs_codes_missing": hs_codes_missing,
-        "show_instructions": endpoint_missing or token_missing or hs_codes_missing,
+        "master_data_missing": master_data_missing,
+        "show_instructions": endpoint_missing or token_missing or master_data_missing,
     }
 
 
