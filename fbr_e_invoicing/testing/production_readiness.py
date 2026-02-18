@@ -43,6 +43,7 @@ CANONICAL_STANDARD_SALE_TYPE = "Goods at standard rate (default)"
 SANDBOX_MODE_LABEL = "Sandbox Testing"
 PRODUCTION_MODE_LABEL = "Production"
 INVALID_MODE_LABEL = "Invalid Mode - Test"
+DUPLICATE_WARNING_TEXT = "Document already submitted to FBR"
 
 
 @frappe.whitelist()
@@ -98,6 +99,9 @@ def _run_phase(phase_name, run_id, seller_tax_id, keep_records):
     queue_checks = _run_queue_retry_checks(run_id, phase_name)
     recovery_checks = _run_recovery_checks(run_id, phase_name)
     bulk_checks = _run_bulk_checks(run_id, phase_name)
+    warning_checks = _run_warning_checks(run_id, phase_name)
+    queue_level_checks = _run_queue_level_checks(run_id, phase_name)
+    double_submit_checks = _run_double_submit_checks(run_id, phase_name)
 
     if phase_name == "baseline":
         submission_checks = _run_baseline_submission_checks(run_id, seller_tax_id)
@@ -112,6 +116,9 @@ def _run_phase(phase_name, run_id, seller_tax_id, keep_records):
         "queue_retry_checks": queue_checks,
         "recovery_checks": recovery_checks,
         "bulk_checks": bulk_checks,
+        "warning_checks": warning_checks,
+        "queue_level_checks": queue_level_checks,
+        "double_submit_checks": double_submit_checks,
         "keep_records": keep_records,
     }
 
@@ -397,6 +404,200 @@ def _run_queue_retry_checks(run_id, phase_name):
         "delay_minutes_reference": [
             fbr_queue._get_retry_delay_minutes(i) for i in (1, 2, 3, 4, 5)
         ],
+    }
+
+
+def _run_warning_checks(run_id, phase_name):
+    from fbr_e_invoicing.api.fbr_validation import get_fbr_warnings
+
+    company = _get_or_create_company_for_test()
+    customer = _ensure_test_customer(run_id)
+    item_code = _ensure_test_item(run_id, "0101.2100", "Nos", STANDARD_SALE_TYPE)
+    item_tax_template = _ensure_item_tax_template(company, f"FBR Test 18 - {company}")
+
+    invoice_name = _create_sales_invoice_for_submission(
+        run_id=f"{run_id}-{phase_name}-WARN",
+        company=company,
+        customer=customer,
+        item_code=item_code,
+        item_tax_template=item_tax_template,
+        save_as_draft=True,
+    )
+
+    doc = frappe.get_doc("Sales Invoice", invoice_name)
+    before_warnings = get_fbr_warnings(doc) or []
+    before_has_duplicate = DUPLICATE_WARNING_TEXT in before_warnings
+
+    test_invoice_number = f"{run_id}-{phase_name}-DUPLICATE-WARNING"
+    frappe.db.set_value("Sales Invoice", invoice_name, "custom_fbr_invoice_number", test_invoice_number)
+    doc.reload()
+    after_warnings = get_fbr_warnings(doc) or []
+    after_has_duplicate = DUPLICATE_WARNING_TEXT in after_warnings
+
+    duplicate_warning_transition_ok = (not before_has_duplicate) and after_has_duplicate
+
+    return {
+        "invoice_name": invoice_name,
+        "duplicate_warning_text": DUPLICATE_WARNING_TEXT,
+        "before_warnings": before_warnings,
+        "after_warnings": after_warnings,
+        "before_has_duplicate_warning": before_has_duplicate,
+        "after_has_duplicate_warning": after_has_duplicate,
+        "duplicate_warning_transition_ok": duplicate_warning_transition_ok,
+    }
+
+
+def _run_queue_level_checks(run_id, phase_name):
+    from fbr_e_invoicing.api import fbr_queue
+
+    company = _get_or_create_company_for_test()
+    customer = _ensure_test_customer(run_id)
+    item_code = _ensure_test_item(run_id, "0101.2100", "Nos", STANDARD_SALE_TYPE)
+    item_tax_template = _ensure_item_tax_template(company, f"FBR Test 18 - {company}")
+
+    invoice_name = _create_sales_invoice_for_submission(
+        run_id=f"{run_id}-{phase_name}-QUEUE-LEVEL",
+        company=company,
+        customer=customer,
+        item_code=item_code,
+        item_tax_template=item_tax_template,
+        save_as_draft=True,
+    )
+
+    first_result = fbr_queue.add_to_queue(
+        doctype="Sales Invoice",
+        docname=invoice_name,
+        status="Pending",
+        priority=5,
+    )
+    if not first_result.get("success"):
+        return {"ok": False, "invoice_name": invoice_name, "error": first_result.get("error")}
+
+    first_queue_id = first_result.get("queue_id")
+    second_result = fbr_queue.add_to_queue(
+        doctype="Sales Invoice",
+        docname=invoice_name,
+        status="Pending",
+        priority=5,
+    )
+
+    if first_queue_id:
+        frappe.db.set_value(
+            "FBR Queue",
+            first_queue_id,
+            {"status": "Processing", "next_retry_at": None, "error_message": ""},
+        )
+
+    third_result = fbr_queue.add_to_queue(
+        doctype="Sales Invoice",
+        docname=invoice_name,
+        status="Pending",
+        priority=5,
+    )
+
+    active_rows = frappe.get_all(
+        "FBR Queue",
+        filters={
+            "document_type": "Sales Invoice",
+            "document_name": invoice_name,
+            "status": ["in", ["Pending", "Processing"]],
+        },
+        fields=["name", "status", "retry_count", "error_message"],
+        order_by="creation asc",
+        limit_page_length=10,
+    )
+
+    second_queue_id = second_result.get("queue_id")
+    third_queue_id = third_result.get("queue_id")
+    same_queue_id_pending = bool(first_queue_id) and second_queue_id == first_queue_id
+    same_queue_id_processing = bool(first_queue_id) and third_queue_id == first_queue_id
+    pending_dedupe_ok = second_result.get("state") == "already_pending" and same_queue_id_pending
+    processing_guard_ok = (
+        third_result.get("state") == "already_processing" and same_queue_id_processing
+    )
+    active_row_uniqueness_ok = len(active_rows) == 1
+    ok = bool(first_result.get("success")) and pending_dedupe_ok and processing_guard_ok and active_row_uniqueness_ok
+
+    return {
+        "ok": ok,
+        "invoice_name": invoice_name,
+        "first_enqueue": first_result,
+        "second_enqueue": second_result,
+        "third_enqueue_after_processing": third_result,
+        "pending_dedupe_ok": pending_dedupe_ok,
+        "processing_guard_ok": processing_guard_ok,
+        "active_row_uniqueness_ok": active_row_uniqueness_ok,
+        "active_row_count": len(active_rows),
+        "active_rows": active_rows,
+    }
+
+
+def _run_double_submit_checks(run_id, phase_name):
+    from fbr_e_invoicing.api.fbr_submission import submit_single_invoice
+
+    company = _get_or_create_company_for_test()
+    customer = _ensure_test_customer(run_id)
+    item_code = _ensure_test_item(run_id, "0101.2100", "Nos", STANDARD_SALE_TYPE)
+    item_tax_template = _ensure_item_tax_template(company, f"FBR Test 18 - {company}")
+
+    invoice_name = _create_sales_invoice_for_submission(
+        run_id=f"{run_id}-{phase_name}-DOUBLE-SUBMIT",
+        company=company,
+        customer=customer,
+        item_code=item_code,
+        item_tax_template=item_tax_template,
+        save_as_draft=True,
+    )
+
+    # Force deterministic payload failure to exercise auto-queue path without external API dependence.
+    frappe.db.sql(
+        """
+        UPDATE `tabSales Invoice Item`
+        SET custom_sale_type = %s
+        WHERE parent = %s
+        """,
+        ("Unsupported Sale Type", invoice_name),
+    )
+
+    first_result = submit_single_invoice("Sales Invoice", invoice_name, is_retry=False)
+    second_result = submit_single_invoice("Sales Invoice", invoice_name, is_retry=False)
+
+    first_queue_id = first_result.get("queue_id")
+    second_queue_id = second_result.get("queue_id")
+    same_queue_id = bool(first_queue_id) and first_queue_id == second_queue_id
+
+    active_rows = frappe.get_all(
+        "FBR Queue",
+        filters={
+            "document_type": "Sales Invoice",
+            "document_name": invoice_name,
+            "status": ["in", ["Pending", "Processing"]],
+        },
+        fields=["name", "status", "retry_count", "error_message"],
+        order_by="creation asc",
+        limit_page_length=10,
+    )
+
+    first_structured = isinstance(first_result, dict) and all(
+        key in first_result for key in ("success", "status", "message", "response", "queue_id")
+    )
+    second_structured = isinstance(second_result, dict) and all(
+        key in second_result for key in ("success", "status", "message", "response", "queue_id")
+    )
+    active_row_uniqueness_ok = len(active_rows) == 1
+    ok = first_structured and second_structured and same_queue_id and active_row_uniqueness_ok
+
+    return {
+        "ok": ok,
+        "invoice_name": invoice_name,
+        "first_result": first_result,
+        "second_result": second_result,
+        "first_structured": first_structured,
+        "second_structured": second_structured,
+        "same_queue_id": same_queue_id,
+        "active_row_uniqueness_ok": active_row_uniqueness_ok,
+        "active_row_count": len(active_rows),
+        "active_rows": active_rows,
     }
 
 
@@ -1186,6 +1387,12 @@ def _derive_go_no_go(results):
     queue_ok = bool(queue_checks.get("retry_progression_ok")) and bool(
         queue_checks.get("failed_as_expected")
     )
+    warning_checks = postfix.get("warning_checks") or {}
+    warning_duplicate_check_ok = bool(warning_checks.get("duplicate_warning_transition_ok"))
+    queue_level_checks = postfix.get("queue_level_checks") or {}
+    queue_level_ok = bool(queue_level_checks.get("ok"))
+    double_submit_checks = postfix.get("double_submit_checks") or {}
+    double_submit_ok = bool(double_submit_checks.get("ok"))
     setup_ok = bool((postfix.get("setup_checks") or {}).get("workspace_exists"))
     mode_payload_checks = ((postfix.get("submission_checks") or {}).get("mode_payload_checks") or {})
     mode_payload_ok = all(
@@ -1201,7 +1408,9 @@ def _derive_go_no_go(results):
     )
 
     decision = (
-        "GO" if all([schema_ok, sales_ok, pos_ok, queue_ok, setup_ok, mode_payload_ok]) else "NO-GO"
+        "GO"
+        if all([schema_ok, sales_ok, pos_ok, queue_ok, queue_level_ok, double_submit_ok, setup_ok, mode_payload_ok])
+        else "NO-GO"
     )
     return {
         "decision": decision,
@@ -1210,8 +1419,11 @@ def _derive_go_no_go(results):
             "sales_valid_submission_ok": sales_ok,
             "pos_valid_submission_ok": pos_ok,
             "queue_retry_ok": queue_ok,
+            "queue_level_dedupe_ok": queue_level_ok,
+            "double_submit_integrity_ok": double_submit_ok,
             "setup_ok": setup_ok,
             "mode_payload_ok": mode_payload_ok,
+            "warning_duplicate_check_ok_info": warning_duplicate_check_ok,
         },
     }
 
@@ -1244,4 +1456,19 @@ def _to_markdown(results):
     ]
     for key, value in (go_no_go.get("checks") or {}).items():
         lines.append(f"- `{key}`: `{value}`")
+
+    postfix = results.get("postfix") or {}
+    warning_checks = postfix.get("warning_checks") or {}
+    queue_level_checks = postfix.get("queue_level_checks") or {}
+    double_submit_checks = postfix.get("double_submit_checks") or {}
+    if warning_checks or queue_level_checks or double_submit_checks:
+        lines.extend(
+            [
+                "",
+                "## Additional Checks",
+                f"- `warning_duplicate_transition_ok`: `{warning_checks.get('duplicate_warning_transition_ok')}`",
+                f"- `queue_level_ok`: `{queue_level_checks.get('ok')}`",
+                f"- `double_submit_ok`: `{double_submit_checks.get('ok')}`",
+            ]
+        )
     return "\n".join(lines) + "\n"
