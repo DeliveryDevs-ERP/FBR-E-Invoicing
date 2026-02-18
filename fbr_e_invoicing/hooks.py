@@ -27,6 +27,10 @@ doc_events = {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
     },
+    "POS Invoice": {
+        "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
+        "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+    },
     "Customer": {
         "validate": "fbr_e_invoicing.tax_setup.set_customer_tax_category",
     },
