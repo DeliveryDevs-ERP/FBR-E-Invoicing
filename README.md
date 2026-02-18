@@ -5,7 +5,6 @@ A comprehensive **Pakistan Federal Board of Revenue (FBR)** electronic invoicing
 ## 🌟 Key Features
 
 ### ✨ **Smart Automation**
-- **Auto-Submit**: POS Invoices automatically submit to FBR on save
 - **Hidden Checkbox**: "Submit to FBR" field (default: checked) controls submission
 - **Intelligent Validation**: Real-time validation of FBR requirements
 - **Date Validation**: Ensures posting date is current date for FBR compliance
