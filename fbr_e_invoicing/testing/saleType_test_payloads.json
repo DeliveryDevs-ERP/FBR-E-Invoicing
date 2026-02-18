@@ -1,0 +1,314 @@
+{
+    "SN001_Standard_Registered": {
+        "description": "Standard 18% tax sale to a Registered Business",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Company Name",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "7654321",
+            "buyerBusinessName": "Registered Customer Ltd",
+            "buyerProvince": "Sindh",
+            "buyerAddress": "Karachi",
+            "buyerRegistrationType": "Registered",
+            "invoiceRefNo": "INV-001",
+            "scenarioId": "SN001",
+            "items": [
+                {
+                    "hsCode": "0902.1000",
+                    "productDescription": "Green Tea",
+                    "rate": "18%",
+                    "uoM": "KGM",
+                    "quantity": 10.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 1000.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 180.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Goods at standard rate (default)",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN002_Standard_Unregistered": {
+        "description": "Standard 18% tax sale to an Unregistered Person (Consumer)",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Company Name",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "9999999",
+            "buyerBusinessName": "Walk-in Customer",
+            "buyerProvince": "Punjab",
+            "buyerAddress": "Lahore",
+            "buyerRegistrationType": "Unregistered",
+            "invoiceRefNo": "INV-002",
+            "scenarioId": "SN002",
+            "items": [
+                {
+                    "hsCode": "1006.1090",
+                    "productDescription": "Rice",
+                    "rate": "18%",
+                    "uoM": "KGM",
+                    "quantity": 5.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 500.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 90.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Goods at standard rate (default)",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN005_Reduced_Rate": {
+        "description": "Goods taxable at a lower rate (e.g., 1%) under 8th Schedule",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Company Name",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "7654321",
+            "buyerBusinessName": "Pharma Co Ltd",
+            "buyerProvince": "Punjab",
+            "buyerAddress": "Lahore",
+            "buyerRegistrationType": "Registered",
+            "invoiceRefNo": "INV-003",
+            "scenarioId": "SN005",
+            "items": [
+                {
+                    "hsCode": "3004.9099",
+                    "productDescription": "Medicaments",
+                    "rate": "1%",
+                    "uoM": "U",
+                    "quantity": 100.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 50000.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 500.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "EIGHTH SCHEDULE",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Goods at Reduced Rate",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN008_3rd_Schedule_Retail_Price": {
+        "description": "Tax calculated on printed Retail Price, not the selling price",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Manufacturer Ltd",
+            "sellerProvince": "Sindh",
+            "sellerAddress": "Karachi",
+            "buyerNTNCNIC": "7654321",
+            "buyerBusinessName": "Distributor Ltd",
+            "buyerProvince": "Sindh",
+            "buyerAddress": "Karachi",
+            "buyerRegistrationType": "Registered",
+            "invoiceRefNo": "INV-004",
+            "scenarioId": "SN008",
+            "items": [
+                {
+                    "hsCode": "3304.9910",
+                    "productDescription": "Consumer Good (Soap/Paste)",
+                    "rate": "18%",
+                    "uoM": "U",
+                    "quantity": 1000.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 80000.0,
+                    "fixedNotifiedValueOrRetailPrice": 100000.0,
+                    "salesTaxApplicable": 18000.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "3rd Schedule",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "3rd Schedule Goods",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN007_Zero_Rated_Exports": {
+        "description": "Exports or 5th Schedule goods taxed at 0%",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Company Name",
+            "sellerProvince": "Sindh",
+            "sellerAddress": "Karachi",
+            "buyerNTNCNIC": "9999999",
+            "buyerBusinessName": "Foreign Buyer",
+            "buyerProvince": "Foreign",
+            "buyerAddress": "Dubai, UAE",
+            "buyerRegistrationType": "Unregistered",
+            "invoiceRefNo": "INV-EXP-001",
+            "scenarioId": "SN007",
+            "items": [
+                {
+                    "hsCode": "5208.1100",
+                    "productDescription": "Cotton Fabric (Export)",
+                    "rate": "0%",
+                    "uoM": "MTR",
+                    "quantity": 1000.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 500000.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 0.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "FIFTH SCHEDULE",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Zero Rated Goods",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN010_Exempt": {
+        "description": "Goods exempt from tax (6th Schedule)",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Company Name",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "7654321",
+            "buyerBusinessName": "Charitable Org",
+            "buyerProvince": "Punjab",
+            "buyerAddress": "Lahore",
+            "buyerRegistrationType": "Registered",
+            "invoiceRefNo": "INV-EXEMPT-001",
+            "scenarioId": "SN010",
+            "items": [
+                {
+                    "hsCode": "1905.9000",
+                    "productDescription": "Bread/Naan (Exempt Item)",
+                    "rate": "0%",
+                    "uoM": "KGM",
+                    "quantity": 50.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 2500.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 0.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "SIXTH SCHEDULE",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Exempt goods",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN026_POS_Standard": {
+        "description": "Point of Sale transaction for standard rate goods (Tier-1 Retail)",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Retail Store",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "9999999",
+            "buyerBusinessName": "Walk-in Consumer",
+            "buyerProvince": "Punjab",
+            "buyerAddress": "Lahore",
+            "buyerRegistrationType": "Unregistered",
+            "invoiceRefNo": "POS-1001",
+            "scenarioId": "SN026",
+            "items": [
+                {
+                    "hsCode": "6109.1000",
+                    "productDescription": "T-Shirt",
+                    "rate": "18%",
+                    "uoM": "U",
+                    "quantity": 1.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 2000.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 360.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Goods at standard rate (default)",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    },
+    "SN028_POS_Reduced": {
+        "description": "Point of Sale transaction for reduced rate goods",
+        "payload": {
+            "invoiceType": "Sale Invoice",
+            "invoiceDate": "2026-02-19",
+            "sellerNTNCNIC": "1234567",
+            "sellerBusinessName": "Your Retail Store",
+            "sellerProvince": "Punjab",
+            "sellerAddress": "Lahore",
+            "buyerNTNCNIC": "9999999",
+            "buyerBusinessName": "Consumer",
+            "buyerProvince": "Punjab",
+            "buyerAddress": "Lahore",
+            "buyerRegistrationType": "Unregistered",
+            "invoiceRefNo": "POS-1002",
+            "scenarioId": "SN028",
+            "items": [
+                {
+                    "hsCode": "4203.1010",
+                    "productDescription": "Leather Jacket (Reduced Rate Scheme)",
+                    "rate": "15%",
+                    "uoM": "U",
+                    "quantity": 1.0,
+                    "totalValues": 0.0,
+                    "valueSalesExcludingST": 10000.0,
+                    "fixedNotifiedValueOrRetailPrice": 0.0,
+                    "salesTaxApplicable": 1500.0,
+                    "salesTaxWithheldAtSource": 0.0,
+                    "extraTax": 0.0,
+                    "furtherTax": 0.0,
+                    "sroScheduleNo": "RETAIL SRO",
+                    "fedPayable": 0.0,
+                    "discount": 0.0,
+                    "saleType": "Goods at Reduced Rate",
+                    "sroItemSerialNo": ""
+                }
+            ]
+        }
+    }
+}

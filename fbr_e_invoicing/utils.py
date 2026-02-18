@@ -481,7 +481,7 @@ def create_fbr_sale_types():
         {"scenario_id": "SN025", "name": "Non-Adjustable Supplies"},
         {
             "scenario_id": "SN026",
-            "name": "Goods at Standard Rate (default) - End Consumer",
+            "name": "Goods at standard rate (default) - End Consumer",
         },
         {"scenario_id": "SN027", "name": "3rd Schedule Goods - End Consumer"},
         {"scenario_id": "SN028", "name": "Goods at Reduced Rate - End Consumer"},
