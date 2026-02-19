@@ -213,6 +213,59 @@ def _mark_queue_terminal_failure(queue_entry, error_message, response=None):
     return update_values
 
 
+def resolve_open_queue_items_for_document(
+    doctype, docname, outcome="completed", error_message="", response=None
+):
+    """Resolve open queue rows for a document after manual submission."""
+    open_rows = frappe.get_all(
+        "FBR Queue",
+        filters={
+            "document_type": doctype,
+            "document_name": docname,
+            "status": ["in", ["Pending", "Processing"]],
+        },
+        fields=["name", "retry_count", "max_retries"],
+        limit_page_length=0,
+    )
+
+    if not open_rows:
+        return {"resolved_count": 0}
+
+    resolved_count = 0
+    normalized_outcome = (outcome or "completed").strip().lower()
+    for row in open_rows:
+        if normalized_outcome == "failed":
+            queue_entry = frappe._dict(
+                {
+                    "name": row.name,
+                    "max_retries": row.max_retries,
+                }
+            )
+            _mark_queue_terminal_failure(
+                queue_entry,
+                error_message or "Resolved as terminal failure by manual submission",
+                response=response,
+            )
+        else:
+            retry_count = cint(row.retry_count or 0)
+            max_retries = _normalize_max_retries(
+                row.max_retries, fallback=DEFAULT_MAX_RETRIES
+            )
+            update_values = {
+                "status": "Completed",
+                "completed_at": now(),
+                "error_message": "",
+                "next_retry_at": None,
+            }
+            _with_remaining_retries(update_values, retry_count, max_retries)
+            _with_fbr_response(update_values, response)
+            frappe.db.set_value("FBR Queue", row.name, update_values)
+
+        resolved_count += 1
+
+    return {"resolved_count": resolved_count}
+
+
 def _get_due_pending_queue_items(limit=50):
     limit = cint(limit or 50)
     if limit <= 0:

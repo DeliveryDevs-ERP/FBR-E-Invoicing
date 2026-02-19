@@ -11,9 +11,3 @@ def after_install():
     populate_provinces()
     sync_hs_codes()
     sync_uoms()
-
-
-def after_sync():
-    from fbr_e_invoicing.tax_setup import setup_fbr_tax_artifacts
-
-    setup_fbr_tax_artifacts()
