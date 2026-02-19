@@ -247,12 +247,15 @@ def get_data(filters, province=None):
         )
         row_tax = round((row_tax_rate * row_val) / 100.0, 2)
 
-        # NEW CODE - Treat NULL/empty as Invalid
-        fbr_status = row.custom_fbr_status or "Invalid"  # Default to Invalid if empty
-        if fbr_status == "Valid":
-            fbr_invoice_number = row.custom_fbr_invoice_number or ""
+        raw_fbr_status = (row.custom_fbr_status or "").strip()
+        fbr_status = raw_fbr_status or "Pending"
+        if raw_fbr_status == "Valid":
+            fbr_invoice_number = row.custom_fbr_invoice_number or "N/A"
+        elif raw_fbr_status == "Invalid":
+            fbr_invoice_number = "N/A"
+        elif raw_fbr_status:
+            fbr_invoice_number = row.custom_fbr_invoice_number or "N/A"
         else:
-            # Any status other than "Valid" (including "Invalid", NULL, empty) shows "Pending"
             fbr_invoice_number = "Pending"
 
         row_data = {

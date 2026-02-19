@@ -51,6 +51,13 @@ def submit_single_invoice(doctype, docname, is_retry=False):
 
     existing_submission_result = _get_existing_submission_result(doc)
     if existing_submission_result:
+        _reconcile_open_queue_after_manual_post(
+            doctype=doctype,
+            docname=docname,
+            status=existing_submission_result.get("status"),
+            response=existing_submission_result.get("response") or {},
+            is_retry=is_retry,
+        )
         return existing_submission_result
 
     payload_result = _build_payload(doctype, docname)
@@ -126,6 +133,13 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             "failure_type": "" if fbr_status == "Valid" else "business_invalid",
         }
         _try_persist_fbr_response_fields(doctype, docname, response)
+        _reconcile_open_queue_after_manual_post(
+            doctype=doctype,
+            docname=docname,
+            status="valid" if fbr_status == "Valid" else "invalid",
+            response=response,
+            is_retry=is_retry,
+        )
         if isinstance(response, dict):
             result.update(response)
         return result
@@ -225,7 +239,10 @@ def bulk_submit_invoices(doctype, docnames):
             doc = frappe.get_doc(doctype, docname)
 
             # Check if already submitted
-            if doc.custom_fbr_invoice_number:
+            if _is_duplicate_submission(
+                getattr(doc, "custom_fbr_status", ""),
+                getattr(doc, "custom_fbr_invoice_number", ""),
+            ):
                 continue
 
             queue_result = add_to_queue(
@@ -243,6 +260,17 @@ def bulk_submit_invoices(doctype, docnames):
         except Exception as e:
             frappe.log_error(f"Error queuing {doctype} {docname}: {str(e)}", "FBR Bulk Submit")
             continue
+
+    if queued_count:
+        try:
+            from fbr_e_invoicing.api.fbr_queue import process_queue
+
+            process_queue(limit=queued_count)
+        except Exception as e:
+            frappe.log_error(
+                f"Error triggering queue processing for bulk submit: {str(e)}",
+                "FBR Bulk Submit",
+            )
 
     return {"queued_count": queued_count}
 
@@ -284,11 +312,12 @@ def bulk_submit_sales_invoices(docnames):
     invoices = frappe.get_all(
         "Sales Invoice",
         filters={"name": ["in", unique_docnames]},
-        fields=["name", "docstatus"],
+        fields=["name", "docstatus", "custom_fbr_status", "custom_fbr_invoice_number"],
     )
 
     invoice_map = {row.name: row for row in invoices}
     draft_invoices = []
+    already_submitted_invoices = []
     queued_invoices = []
     failed_invoices = []
 
@@ -308,6 +337,10 @@ def bulk_submit_sales_invoices(docnames):
             draft_invoices.append(docname)
             continue
 
+        if _is_duplicate_submission(doc.custom_fbr_status, doc.custom_fbr_invoice_number):
+            already_submitted_invoices.append(docname)
+            continue
+
         queue_result = add_to_queue(
             doctype="Sales Invoice",
             docname=docname,
@@ -323,10 +356,22 @@ def bulk_submit_sales_invoices(docnames):
                 "FBR Bulk Submit Sales Invoice",
             )
 
+    if queued_invoices:
+        try:
+            from fbr_e_invoicing.api.fbr_queue import process_queue
+
+            process_queue(limit=len(queued_invoices))
+        except Exception as e:
+            frappe.log_error(
+                f"Error triggering queue processing for bulk submit sales invoices: {str(e)}",
+                "FBR Bulk Submit Sales Invoice",
+            )
+
     return {
         "queued_count": len(queued_invoices),
         "queued_invoices": queued_invoices,
         "draft_invoices": draft_invoices,
+        "already_submitted_invoices": already_submitted_invoices,
         "failed_invoices": failed_invoices,
         "queue_route": "/app/fbr-queue",
     }
@@ -685,6 +730,58 @@ def _get_request_context():
         "REMOTE_ADDR", ""
     )
     return user_agent, ip_address
+
+
+def _reconcile_open_queue_after_manual_post(
+    doctype, docname, status, response=None, is_retry=False
+):
+    if is_retry:
+        return
+
+    normalized_status = (status or "").strip().lower()
+    if normalized_status not in {"valid", "invalid", "already_submitted"}:
+        return
+
+    try:
+        from fbr_e_invoicing.api.fbr_queue import resolve_open_queue_items_for_document
+
+        if normalized_status in {"valid", "already_submitted"}:
+            resolve_open_queue_items_for_document(
+                doctype=doctype,
+                docname=docname,
+                outcome="completed",
+                response=response if isinstance(response, dict) else {},
+            )
+            return
+
+        invalid_message = _build_manual_invalid_queue_message(response)
+        resolve_open_queue_items_for_document(
+            doctype=doctype,
+            docname=docname,
+            outcome="failed",
+            error_message=invalid_message,
+            response=response if isinstance(response, dict) else {},
+        )
+    except Exception as e:
+        frappe.log_error(
+            f"Error reconciling queue for {doctype} {docname}: {str(e)}",
+            "FBR Queue Reconciliation",
+        )
+
+
+def _build_manual_invalid_queue_message(response):
+    base = "Resolved as terminal failure by manual submission (Invalid)"
+    if not isinstance(response, dict):
+        return base
+
+    validation = response.get("validationResponse") or {}
+    status = validation.get("status")
+    status_code = validation.get("statusCode")
+    if status and status_code:
+        return f"{base}: status={status}, statusCode={status_code}"
+    if status:
+        return f"{base}: status={status}"
+    return base
 
 @frappe.whitelist()
 def get_fbr_submission_stats():

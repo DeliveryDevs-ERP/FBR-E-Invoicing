@@ -378,9 +378,6 @@ def run_post_migrate_sync():
         frappe.db.set_single_value(
             "FBR E-Inv Setup", "master_data_retrieved", 1 if master_ok else 0
         )
-    from fbr_e_invoicing.tax_setup import setup_fbr_tax_artifacts
-
-    setup_fbr_tax_artifacts()
 
 
 def is_api_key_valid():
@@ -479,10 +476,7 @@ def create_fbr_sale_types():
         {"scenario_id": "SN023", "name": "CNG Sales"},
         {"scenario_id": "SN024", "name": "Goods as per SRO.297(I)/2023"},
         {"scenario_id": "SN025", "name": "Non-Adjustable Supplies"},
-        {
-            "scenario_id": "SN026",
-            "name": "Goods at standard rate (default) - End Consumer",
-        },
+        {"scenario_id": "SN026","name": "Goods at standard rate (default) - End Consumer",},
         {"scenario_id": "SN027", "name": "3rd Schedule Goods - End Consumer"},
         {"scenario_id": "SN028", "name": "Goods at Reduced Rate - End Consumer"},
     ]

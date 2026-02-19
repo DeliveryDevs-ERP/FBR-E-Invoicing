@@ -20,6 +20,8 @@ frappe.listview_settings["Sales Invoice"] = {
                 const result = r?.message || {};
                 const queued_count = Number(result.queued_count || 0);
                 const draft_invoices = result.draft_invoices || [];
+                const already_submitted_invoices =
+                    result.already_submitted_invoices || [];
                 const failed_invoices = result.failed_invoices || [];
                 const queue_route = result.queue_route || "/app/fbr-queue";
 
@@ -42,6 +44,15 @@ frappe.listview_settings["Sales Invoice"] = {
                             "The following invoices were not submitted because their status is Draft:"
                         );
                     message += "<br>" + draft_invoices.join("<br>");
+                }
+
+                if (already_submitted_invoices.length) {
+                    message +=
+                        "<br><br>" +
+                        __(
+                            "The following invoices were skipped because they are already submitted to FBR:"
+                        );
+                    message += "<br>" + already_submitted_invoices.join("<br>");
                 }
 
                 if (failed_invoices.length) {

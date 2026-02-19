@@ -33,9 +33,6 @@ doc_events = {
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
         "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
     },
-    "Customer": {
-        "validate": "fbr_e_invoicing.tax_setup.set_customer_tax_category",
-    },
 }
 
 doctype_list_js = {
@@ -166,7 +163,6 @@ dashboard_charts = [
 # -------------------------
 
 after_install = "fbr_e_invoicing.install.after_install"
-after_sync = "fbr_e_invoicing.install.after_sync"
 after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
