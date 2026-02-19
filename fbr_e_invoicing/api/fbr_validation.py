@@ -87,29 +87,32 @@ def validate_fbr_items(doc, errors):
     if not doc.items:
         errors.append(_("At least one item is required for FBR submission"))
         return
-    
+
     missing_hs_codes = []
-    missing_sale_types = []
     missing_tax_templates = []
-    
+    missing_sale_types = []
     for idx, item in enumerate(doc.items, 1):
         # Check HS Code
         if not item.custom_hs_code:
             missing_hs_codes.append(f"Row {idx}: {item.item_name}")
-        
-        # Check Item Tax Template
+
+        # Check Item Tax Template (version-16 behavior: presence check only)
         if not item.item_tax_template:
             missing_tax_templates.append(f"Row {idx}: {item.item_name}")
 
         # Check Sale Type
         if not item.custom_sale_type:
             missing_sale_types.append(f"Row {idx}: {item.item_name}")
-    
+
     if missing_hs_codes:
         errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
-    
+
     if missing_tax_templates:
-        errors.append(_("Following items are missing Item Tax Templates required for FBR:<br>{0}").format("<br>".join(missing_tax_templates)))
+        errors.append(
+            _("Following items are missing Item Tax Templates required for FBR:<br>{0}").format(
+                "<br>".join(missing_tax_templates)
+            )
+        )
 
     if missing_sale_types:
         errors.append(
@@ -175,25 +178,28 @@ def validate_pos_invoice_fbr(doc, errors):
         return
 
     missing_hs_codes = []
-    missing_sale_types = []
     missing_tax_templates = []
-
+    missing_sale_types = []
     for idx, item in enumerate(doc.items, 1):
         if not item.custom_hs_code:
             missing_hs_codes.append(f"Row {idx}: {item.item_name}")
-        if not item.custom_sale_type:
-            missing_sale_types.append(f"Row {idx}: {item.item_name}")
         if not item.item_tax_template:
             missing_tax_templates.append(f"Row {idx}: {item.item_name}")
+        if not item.custom_sale_type:
+            missing_sale_types.append(f"Row {idx}: {item.item_name}")
 
     if missing_hs_codes:
         errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
 
+    if missing_tax_templates:
+        errors.append(
+            _("Following items are missing Item Tax Templates required for FBR:<br>{0}").format(
+                "<br>".join(missing_tax_templates)
+            )
+        )
+
     if missing_sale_types:
         errors.append(_("Following items are missing Sale Type required for FBR:<br>{0}").format("<br>".join(missing_sale_types)))
-
-    if missing_tax_templates:
-        errors.append(_("Following items are missing Item Tax Templates required for FBR:<br>{0}").format("<br>".join(missing_tax_templates)))
 
 
 def validate_pos_invoice_fields(doc, method=None):
