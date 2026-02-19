@@ -80,6 +80,7 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             "retryable": retryable,
             "failure_type": failure_type,
         }
+        _try_persist_fbr_response_fields(doctype, docname, fallback_response)
         result.update(fallback_response)
         return result
 
@@ -119,6 +120,7 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             "retryable": False,
             "failure_type": "" if fbr_status == "Valid" else "business_invalid",
         }
+        _try_persist_fbr_response_fields(doctype, docname, response)
         if isinstance(response, dict):
             result.update(response)
         return result
@@ -159,6 +161,7 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         "retryable": retryable,
         "failure_type": failure_type,
     }
+    _try_persist_fbr_response_fields(doctype, docname, fallback_response)
     result.update(fallback_response)
     return result
 
@@ -168,7 +171,7 @@ def submit_pos_invoice_on_submit(doc, method=None):
     if not getattr(doc, "custom_submit_to_fbr", 0):
         return
 
-    if getattr(doc, "custom_fbr_invoice_number", ""):
+    if _has_existing_fbr_submission(doc):
         return
 
     try:
@@ -224,7 +227,6 @@ def bulk_submit_invoices(doctype, docnames):
                 doctype=doctype,
                 docname=docname,
                 status="Pending",
-                priority=5,
             )
             if queue_result.get("success"):
                 queued_count += 1
@@ -305,7 +307,6 @@ def bulk_submit_sales_invoices(docnames):
             doctype="Sales Invoice",
             docname=docname,
             status="Pending",
-            priority=5,
         )
         if queue_result.get("success"):
             queued_invoices.append(docname)
@@ -513,7 +514,6 @@ def _auto_queue_failed_submission(doctype, docname, error_message, is_retry, ret
             docname=docname,
             status="Pending",
             error_message=error_message,
-            priority=5,
         )
         if queue_result.get("success"):
             return queue_result.get("queue_id")
@@ -548,6 +548,40 @@ def _persist_fbr_response_fields(doctype, docname, response):
         update_values[response_field] = json.dumps(response, indent=2)
 
     frappe.db.set_value(doctype, docname, update_values)
+
+
+def _try_persist_fbr_response_fields(doctype, docname, response):
+    if not isinstance(response, dict) or not response:
+        return
+
+    try:
+        _persist_fbr_response_fields(doctype, docname, response)
+    except Exception as e:
+        frappe.log_error(
+            f"Error persisting FBR response fields for {doctype} {docname}: {str(e)}",
+            "FBR Response Persistence",
+        )
+
+
+def _has_existing_fbr_submission(doc):
+    status = (getattr(doc, "custom_fbr_status", "") or "").strip()
+    status_lower = status.lower()
+
+    # Allow re-submission after business invalid responses.
+    if status_lower == "invalid":
+        return False
+
+    if getattr(doc, "custom_fbr_invoice_number", ""):
+        return True
+
+    if status:
+        return True
+
+    response_field = _get_response_storage_field(doc.doctype)
+    if response_field and getattr(doc, response_field, ""):
+        return True
+
+    return False
 
 
 def _get_response_storage_field(doctype):

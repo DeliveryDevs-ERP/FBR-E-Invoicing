@@ -45,9 +45,9 @@ doctype_list_js = {
 # ---------------
 
 scheduler_events = {
-    # Process FBR queue every 15 minutes
+    # Process FBR queue every 2 minutes
     "cron": {
-        "*/15 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
+        "*/2 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
     },
     # Cleanup old logs and queue items daily at 2 AM
     # "daily": [

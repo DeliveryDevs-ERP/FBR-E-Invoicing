@@ -15,6 +15,7 @@
   "status",
   "retry_count",
   "max_retries",
+  "remaining_retries",
   "details_section",
   "error_message",
   "column_break_gher",
@@ -59,7 +60,7 @@
   },
   {
    "default": "5",
-   "description": "1 = Highest, 10 = Lowest",
+   "description": "10 = Highest, 1 = Lowest",
    "fieldname": "priority",
    "fieldtype": "Int",
    "label": "Priority"
@@ -90,6 +91,13 @@
    "fieldname": "max_retries",
    "fieldtype": "Int",
    "label": "Max Retries"
+  },
+  {
+   "default": "5",
+   "fieldname": "remaining_retries",
+   "fieldtype": "Int",
+   "label": "Remaining Retries",
+   "read_only": 1
   },
   {
    "fieldname": "details_section",
