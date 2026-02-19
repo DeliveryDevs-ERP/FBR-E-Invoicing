@@ -48,6 +48,11 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         }
         result.update(fallback_response)
         return result
+
+    existing_submission_result = _get_existing_submission_result(doc)
+    if existing_submission_result:
+        return existing_submission_result
+
     payload_result = _build_payload(doctype, docname)
     if not payload_result.get("success"):
         error_message = payload_result.get("error") or "Unable to build FBR payload"
@@ -563,22 +568,99 @@ def _try_persist_fbr_response_fields(doctype, docname, response):
         )
 
 
-def _has_existing_fbr_submission(doc):
+def _get_existing_submission_result(doc):
     status = (getattr(doc, "custom_fbr_status", "") or "").strip()
-    status_lower = status.lower()
+    invoice_number = (getattr(doc, "custom_fbr_invoice_number", "") or "").strip()
 
-    # Allow re-submission after business invalid responses.
-    if status_lower == "invalid":
+    if not _is_duplicate_submission(status, invoice_number):
+        return None
+
+    response = _get_stored_fbr_response(doc, status, invoice_number)
+    message = "Invoice already submitted to FBR."
+    if invoice_number:
+        message = (
+            f"Invoice already submitted to FBR with invoice number {invoice_number}."
+        )
+
+    result = {
+        "success": True,
+        "status": "already_submitted",
+        "message": message,
+        "response": response,
+        "queue_id": None,
+        "retryable": False,
+        "failure_type": "",
+    }
+    if isinstance(response, dict):
+        result.update(response)
+    return result
+
+
+def _is_duplicate_submission(status, invoice_number):
+    normalized_status = (status or "").strip().lower()
+    if normalized_status == "invalid":
         return False
 
-    if getattr(doc, "custom_fbr_invoice_number", ""):
+    if (invoice_number or "").strip():
         return True
+
+    return normalized_status == "valid"
+
+
+def _get_stored_fbr_response(doc, status="", invoice_number=""):
+    response_field = _get_response_storage_field(doc.doctype)
+    if response_field:
+        raw_response = getattr(doc, response_field, "")
+        if raw_response:
+            try:
+                parsed_response = json.loads(raw_response)
+                if isinstance(parsed_response, dict):
+                    return parsed_response
+            except Exception:
+                pass
+
+    fallback_response = {}
+    if invoice_number:
+        fallback_response["invoiceNumber"] = invoice_number
+
+    dated = getattr(doc, "custom_fbr_datetime", "") or ""
+    if dated:
+        fallback_response["dated"] = dated
 
     if status:
+        fallback_response["validationResponse"] = {"status": status}
+
+    return fallback_response
+
+
+def _has_existing_fbr_submission(doc):
+    status = getattr(doc, "custom_fbr_status", "")
+    invoice_number = getattr(doc, "custom_fbr_invoice_number", "")
+    if _is_duplicate_submission(status, invoice_number):
         return True
 
-    response_field = _get_response_storage_field(doc.doctype)
-    if response_field and getattr(doc, response_field, ""):
+    # Protect against stale in-memory doc values during submit hooks.
+    db_values = frappe.db.get_value(
+        doc.doctype,
+        doc.name,
+        ["custom_fbr_status", "custom_fbr_invoice_number"],
+        as_dict=True,
+    ) or {}
+    if _is_duplicate_submission(
+        db_values.get("custom_fbr_status"),
+        db_values.get("custom_fbr_invoice_number"),
+    ):
+        return True
+
+    # Avoid duplicate on-submit fallback when a previous successful submit log exists.
+    if frappe.db.exists(
+        "FBR Logs",
+        {
+            "document_type": doc.doctype,
+            "document_name": doc.name,
+            "status": "Success",
+        },
+    ):
         return True
 
     return False

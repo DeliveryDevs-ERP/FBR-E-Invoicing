@@ -101,6 +101,7 @@ def _create_item_tax_template(company, title, tax_account, tax_rate):
                 "doctype": "Item Tax Template",
                 "title": title,
                 "company": company,
+                "disabled": 1,
                 "taxes": [
                     {
                         "tax_type": tax_account,
@@ -162,6 +163,7 @@ def _create_taxes_template(doctype, company, title, tax_category, rows):
                 "doctype": doctype,
                 "title": title,
                 "company": company,
+                "disabled": 1,
                 "tax_category": tax_category,
                 "taxes": template_rows,
             }

@@ -572,6 +572,12 @@ def process_queue_item(queue_item):
                 response,
             )
 
+        if submission_result.get("status") == "already_submitted":
+            return {
+                "success": True,
+                "response": response if isinstance(response, dict) else {},
+            }
+
         if not submission_result.get("success"):
             detailed_error = _build_detailed_error_message(
                 response, submission_result.get("message") or "FBR submission failed"
