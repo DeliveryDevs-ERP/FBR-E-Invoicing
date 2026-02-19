@@ -5,6 +5,10 @@ from frappe.utils import now
 import requests
 from requests.exceptions import RequestException
 
+
+RETRYABLE_HTTP_STATUS_CODES = {408, 425, 429}
+
+
 @frappe.whitelist()
 def submit_single_invoice(doctype, docname, is_retry=False):
     """Submit a single invoice to FBR and return structured status payload."""
@@ -39,13 +43,19 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             "message": error_message,
             "response": fallback_response,
             "queue_id": None,
+            "retryable": False,
+            "failure_type": "document_error",
         }
         result.update(fallback_response)
         return result
     payload_result = _build_payload(doctype, docname)
     if not payload_result.get("success"):
         error_message = payload_result.get("error") or "Unable to build FBR payload"
-        queue_id = _auto_queue_failed_submission(doctype, docname, error_message, is_retry)
+        retryable = False
+        failure_type = payload_result.get("failure_type") or "payload_error"
+        queue_id = _auto_queue_failed_submission(
+            doctype, docname, error_message, is_retry, retryable
+        )
         processing_time = round((perf_counter() - start_time) * 1000, 2)
         fallback_response = {
             "validationResponse": {"status": "Error", "error": error_message}
@@ -67,6 +77,8 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             "message": error_message,
             "response": fallback_response,
             "queue_id": queue_id,
+            "retryable": retryable,
+            "failure_type": failure_type,
         }
         result.update(fallback_response)
         return result
@@ -97,16 +109,26 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         result = {
             "success": True,
             "status": "valid" if fbr_status == "Valid" else "invalid",
-            "message": "Submitted to FBR",
+            "message": (
+                "Submitted to FBR"
+                if fbr_status == "Valid"
+                else "Submitted to FBR with Invalid status"
+            ),
             "response": response,
             "queue_id": None,
+            "retryable": False,
+            "failure_type": "" if fbr_status == "Valid" else "business_invalid",
         }
         if isinstance(response, dict):
             result.update(response)
         return result
 
     error_message = api_result.get("error") or "FBR submission failed"
-    queue_id = _auto_queue_failed_submission(doctype, docname, error_message, is_retry)
+    retryable = bool(api_result.get("retryable"))
+    failure_type = api_result.get("failure_type") or "http_error"
+    queue_id = _auto_queue_failed_submission(
+        doctype, docname, error_message, is_retry, retryable
+    )
     fallback_response = response if isinstance(response, dict) else {}
     if "validationResponse" not in fallback_response:
         fallback_response["validationResponse"] = {
@@ -134,6 +156,8 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         "message": error_message,
         "response": fallback_response,
         "queue_id": queue_id,
+        "retryable": retryable,
+        "failure_type": failure_type,
     }
     result.update(fallback_response)
     return result
@@ -317,6 +341,8 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             "status_code": None,
             "data": {},
             "api_version": "",
+            "retryable": False,
+            "failure_type": "config_error",
         }
 
     verify_ssl = getattr(fbr_settings, "verify_ssl", True)
@@ -348,6 +374,8 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             "status_code": None,
             "data": {},
             "api_version": "",
+            "retryable": True,
+            "failure_type": "network_error",
         }
     except Exception as e:
         return {
@@ -356,6 +384,8 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             "status_code": None,
             "data": {},
             "api_version": "",
+            "retryable": False,
+            "failure_type": "unknown_error",
         }
 
     text = resp.text or ""
@@ -383,12 +413,15 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             if err_msg
             else (f" | Body: {text[:500]}" if text else "")
         )
+        retryable = _is_retryable_http_status(resp.status_code)
         return {
             "success": False,
             "error": f"FBR API error {status_line}{details}",
             "status_code": resp.status_code,
             "data": data if isinstance(data, dict) else {"raw": text},
             "api_version": api_version,
+            "retryable": retryable,
+            "failure_type": "http_error",
         }
 
     if not isinstance(data, dict):
@@ -400,6 +433,8 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
         "status_code": resp.status_code,
         "data": data,
         "api_version": api_version,
+        "retryable": False,
+        "failure_type": "",
     }
 
 def log_fbr_submission(
@@ -460,13 +495,14 @@ def _build_payload(doctype, docname):
         return {
             "success": False,
             "error": "Unknown Doctype error in submit_single_invoice function",
+            "failure_type": "payload_error",
         }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "failure_type": "payload_error"}
 
 
-def _auto_queue_failed_submission(doctype, docname, error_message, is_retry):
-    if is_retry or doctype not in ("Sales Invoice", "POS Invoice"):
+def _auto_queue_failed_submission(doctype, docname, error_message, is_retry, retryable=False):
+    if is_retry or not retryable or doctype not in ("Sales Invoice", "POS Invoice"):
         return None
 
     try:
@@ -492,6 +528,12 @@ def _auto_queue_failed_submission(doctype, docname, error_message, is_retry):
         )
 
     return None
+
+
+def _is_retryable_http_status(status_code):
+    if status_code is None:
+        return False
+    return status_code in RETRYABLE_HTTP_STATUS_CODES or status_code >= 500
 
 
 def _persist_fbr_response_fields(doctype, docname, response):

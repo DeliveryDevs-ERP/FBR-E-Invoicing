@@ -73,14 +73,13 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Mode",
-   "options": "Sandbox Testing\nProduction",
-   "reqd": 1
+   "options": "Sandbox Testing\nProduction"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-18 14:39:05.168341",
+ "modified": "2026-02-19 10:21:26.038827",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",
