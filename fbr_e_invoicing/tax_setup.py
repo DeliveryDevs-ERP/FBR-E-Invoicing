@@ -120,6 +120,9 @@ def _create_item_tax_template(company, title, tax_account, tax_rate):
 
 
 def _create_taxes_template(doctype, company, title, tax_category, rows):
+    # Guard only on title + company — not on tax_category.
+    # Multiple templates (goods, services, combined) can share the same
+    # tax_category; the user selects the right one per invoice manually.
     existing = frappe.db.get_value(
         doctype,
         {"title": title, "company": company},
@@ -127,16 +130,6 @@ def _create_taxes_template(doctype, company, title, tax_category, rows):
     )
     if existing:
         return existing, False
-
-    # ERPNext allows only one template per tax category.
-    if tax_category:
-        existing_for_tax_category = frappe.db.get_value(
-            doctype,
-            {"company": company, "tax_category": tax_category},
-            "name",
-        )
-        if existing_for_tax_category:
-            return existing_for_tax_category, False
 
     cost_center = frappe.db.get_value("Company", company, "cost_center")
     template_rows = []
@@ -304,12 +297,37 @@ def _setup_company_tax_artifacts(company):
         services_rate = province["services_rate"]
 
         account_specs = (
-            ("sales_services", f"Sales Tax on Services - {province_code}", liability_group, "Liability"),
-            ("sales_goods", f"Sales Tax on Goods - {province_code}", liability_group, "Liability"),
+            (
+                "sales_services",
+                f"Sales Tax on Services - {province_code}",
+                liability_group,
+                "Liability",
+            ),
+            (
+                "sales_goods",
+                f"Sales Tax on Goods - {province_code}",
+                liability_group,
+                "Liability",
+            ),
             ("wht", f"WHT - {province_code}", liability_group, "Liability"),
-            ("further_tax", f"Further Tax - {province_code}", liability_group, "Liability"),
-            ("purchase_services", f"Purchase Tax on Services - {province_code}", asset_group, "Asset"),
-            ("purchase_goods", f"Purchase Tax on Goods - {province_code}", asset_group, "Asset"),
+            (
+                "further_tax",
+                f"Further Tax - {province_code}",
+                liability_group,
+                "Liability",
+            ),
+            (
+                "purchase_services",
+                f"Purchase Tax on Services - {province_code}",
+                asset_group,
+                "Asset",
+            ),
+            (
+                "purchase_goods",
+                f"Purchase Tax on Goods - {province_code}",
+                asset_group,
+                "Asset",
+            ),
         )
 
         accounts = {}
