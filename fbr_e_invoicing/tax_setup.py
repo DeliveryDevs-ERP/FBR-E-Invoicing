@@ -237,6 +237,12 @@ def _ensure_tax_category(province_name):
 
 
 def set_customer_tax_category(doc, method=None):
+    meta = doc.meta if hasattr(doc, "meta") else None
+    if meta and (
+        not meta.has_field("custom_province") or not meta.has_field("tax_category")
+    ):
+        return
+
     province = (doc.get("custom_province") or "").strip()
     if not province:
         return
@@ -258,6 +264,8 @@ def set_customer_tax_category(doc, method=None):
 
 
 def _backfill_customer_tax_categories():
+    _assert_required_customer_columns()
+
     updated = 0
     customers = frappe.get_all(
         "Customer",
@@ -281,6 +289,22 @@ def _backfill_customer_tax_categories():
         updated += 1
 
     return updated
+
+
+def _assert_required_customer_columns():
+    required_columns = {"custom_province", "tax_category"}
+    customer_columns = set(frappe.db.get_table_columns("Customer") or [])
+    missing_columns = sorted(required_columns - customer_columns)
+    if not missing_columns:
+        return
+
+    site = frappe.local.site or "<site>"
+    missing_text = ", ".join(f"`tabCustomer.{column}`" for column in missing_columns)
+    frappe.throw(
+        "FBR install/migrate prerequisite failed: missing required Customer columns "
+        f"{missing_text}. Please run `bench --site {site} migrate` and retry.",
+        title="FBR Schema Preflight Failed",
+    )
 
 
 def _setup_company_tax_artifacts(company):
