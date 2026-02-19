@@ -62,6 +62,19 @@ def _mark_queue_retry_or_fail(queue_entry, error_message):
     return update_values
 
 
+def _mark_queue_terminal_failure(queue_entry, error_message):
+    max_retries = _get_effective_max_retries(queue_entry)
+    update_values = {
+        "status": "Failed",
+        "retry_count": max_retries,
+        "last_retry_at": now(),
+        "next_retry_at": None,
+        "error_message": error_message,
+    }
+    frappe.db.set_value("FBR Queue", queue_entry.name, update_values)
+    return update_values
+
+
 def _get_due_pending_queue_items(limit=50):
     limit = cint(limit or 50)
     if limit <= 0:
@@ -343,9 +356,11 @@ def _process_single_queue_item(queue_item_name):
                 },
             )
         else:
-            _mark_queue_retry_or_fail(
-                queue_entry, result.get("error", "Unknown error")
-            )
+            error_message = result.get("error", "Unknown error")
+            if result.get("retryable", True):
+                _mark_queue_retry_or_fail(queue_entry, error_message)
+            else:
+                _mark_queue_terminal_failure(queue_entry, error_message)
 
     except Exception as e:
         _mark_queue_retry_or_fail(queue_entry, str(e))
@@ -366,27 +381,40 @@ def process_queue_item(queue_item):
         submission_result = submit_single_invoice(
             queue_item.document_type, queue_item.document_name, is_retry=True
         )
+        response = submission_result.get("response") or {}
+        if isinstance(response, dict) and response:
+            _persist_fbr_response_fields(
+                queue_item.document_type,
+                queue_item.document_name,
+                response,
+            )
+
         if not submission_result.get("success"):
             return {
                 "success": False,
                 "error": submission_result.get("message") or "FBR submission failed",
+                "retryable": bool(submission_result.get("retryable")),
+                "failure_type": submission_result.get("failure_type") or "submission_error",
             }
-
-        response = submission_result.get("response") or {}
-        _persist_fbr_response_fields(
-            queue_item.document_type,
-            queue_item.document_name,
-            response,
-        )
 
         status = response.get("validationResponse", {}).get("status", "")
         if status == "Valid":
             return {"success": True}
 
-        return {"success": False, "error": f"FBR validation failed: {status}"}
+        return {
+            "success": False,
+            "error": f"FBR validation failed: {status}",
+            "retryable": False,
+            "failure_type": "business_invalid",
+        }
 
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e),
+            "retryable": True,
+            "failure_type": "processing_error",
+        }
 
 
 @frappe.whitelist()
