@@ -6,6 +6,7 @@ app_email = "osama.ahmed@deliverydevs.com"
 app_license = "mit"
 app_icon = "octicon octicon-briefcase"  # pick any valid icon class
 app_color = "blue"
+required_apps = ["erpnext"]
 
 
 add_to_apps_screen = [
@@ -165,6 +166,7 @@ dashboard_charts = [
 # -------------------------
 
 after_install = "fbr_e_invoicing.install.after_install"
+after_sync = "fbr_e_invoicing.install.after_sync"
 after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
