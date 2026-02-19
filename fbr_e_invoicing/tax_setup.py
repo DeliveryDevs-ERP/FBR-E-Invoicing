@@ -129,6 +129,15 @@ def _create_taxes_template(doctype, company, title, tax_category, rows):
         "name",
     )
     if existing:
+        # Keep all templates uncategorized so multiple templates can coexist.
+        if tax_category is None:
+            frappe.db.set_value(
+                doctype,
+                existing,
+                "tax_category",
+                None,
+                update_modified=False,
+            )
         return existing, False
 
     cost_center = frappe.db.get_value("Company", company, "cost_center")
@@ -367,17 +376,14 @@ def _setup_company_tax_artifacts(company):
             else:
                 stats["item_templates_skipped"] += 1
 
-        tax_category = _ensure_tax_category(province_name)
-        if not tax_category:
-            frappe.log_error(
-                f"Tax Category not found for province {province_name}. Skipping taxes templates.",
-                "FBR Tax Setup",
-            )
-            continue
+        # Tax Category is maintained on Customer/Supplier side, not on tax templates.
+        # Keep templates uncategorized to allow multiple templates per province.
+        _ensure_tax_category(province_name)
 
         sales_templates = (
             (
                 f"Sales Tax on Services - {province_code}",
+                None,
                 [
                     _template_row(
                         accounts.get("sales_services"),
@@ -388,6 +394,7 @@ def _setup_company_tax_artifacts(company):
             ),
             (
                 f"Sales Tax on Goods - {province_code}",
+                None,
                 [
                     _template_row(
                         accounts.get("sales_goods"),
@@ -398,6 +405,7 @@ def _setup_company_tax_artifacts(company):
             ),
             (
                 f"SST + WHT + Further Tax - {province_code}",
+                None,
                 [
                     _template_row(
                         accounts.get("sales_services"),
@@ -417,14 +425,14 @@ def _setup_company_tax_artifacts(company):
                 ],
             ),
         )
-        for title, rows in sales_templates:
+        for title, template_tax_category, rows in sales_templates:
             if any(not row["account_head"] for row in rows):
                 continue
             _, created = _create_taxes_template(
                 doctype="Sales Taxes and Charges Template",
                 company=company,
                 title=title,
-                tax_category=tax_category,
+                tax_category=template_tax_category,
                 rows=rows,
             )
             if created:
@@ -435,6 +443,7 @@ def _setup_company_tax_artifacts(company):
         purchase_templates = (
             (
                 f"Purchase Tax on Services - {province_code}",
+                None,
                 [
                     _template_row(
                         accounts.get("purchase_services"),
@@ -446,6 +455,7 @@ def _setup_company_tax_artifacts(company):
             ),
             (
                 f"Purchase Tax on Goods - {province_code}",
+                None,
                 [
                     _template_row(
                         accounts.get("purchase_goods"),
@@ -456,14 +466,14 @@ def _setup_company_tax_artifacts(company):
                 ],
             ),
         )
-        for title, rows in purchase_templates:
+        for title, template_tax_category, rows in purchase_templates:
             if any(not row["account_head"] for row in rows):
                 continue
             _, created = _create_taxes_template(
                 doctype="Purchase Taxes and Charges Template",
                 company=company,
                 title=title,
-                tax_category=tax_category,
+                tax_category=template_tax_category,
                 rows=rows,
             )
             if created:
