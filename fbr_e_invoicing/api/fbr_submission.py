@@ -1,21 +1,43 @@
 import frappe
 import json
 from time import perf_counter
-from frappe.utils import now
+from frappe.utils import cint, get_datetime, now
 import requests
 from requests.exceptions import RequestException
 
 RETRYABLE_HTTP_STATUS_CODES = {408, 425, 429}
 
 
+def _normalize_text(value):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if text.casefold() in {"none", "null"}:
+        return ""
+    return text
+
+
+def _normalize_datetime_for_db(value):
+    text = _normalize_text(value)
+    if not text:
+        return None
+    try:
+        # Keep DB datetime writes safe even if API returns a loosely formatted value.
+        return str(get_datetime(text))
+    except Exception:
+        return None
+
+
 @frappe.whitelist()
-def submit_single_invoice(doctype, docname, is_retry=False):
+def submit_single_invoice(doctype, docname, is_retry=False, retry_attempt=0):
     """
     Actually submit a single invoice to FBR API.
     Called ONLY by background worker via queue.
     """
     start_time = perf_counter()
-    retry_attempt = 1 if is_retry else 0
+    retry_attempt = max(0, cint(retry_attempt))
+    if retry_attempt == 0 and is_retry:
+        retry_attempt = 1
 
     # 1. Verification of document and state
     try:
@@ -34,8 +56,8 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             },
         }
 
-    existing_status = str(getattr(doc, "custom_fbr_status", "")).strip().lower()
-    existing_invoice = str(getattr(doc, "custom_fbr_invoice_number", "")).strip()
+    existing_status = _normalize_text(getattr(doc, "custom_fbr_status", "")).lower()
+    existing_invoice = _normalize_text(getattr(doc, "custom_fbr_invoice_number", ""))
 
     if existing_status == "valid" or existing_invoice:
         # Already submitted
@@ -179,20 +201,32 @@ def bulk_submit_invoices(docnames):
     results = {
         "queued": [],
         "drafts_skipped": [],
+        "cancelled_skipped": [],
         "already_submitted_skipped": [],
         "failed_to_queue": [],
     }
+    failed_to_queue_details = []
 
     from fbr_e_invoicing.api.fbr_queue import add_to_queue
 
     for docname in unique_docnames:
         doc = invoice_map.get(docname)
         if not doc:
-            results["failed_to_queue"].append(f"{docname} (Not found)")
+            reason = "Not found"
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
             continue
 
         if doc.docstatus == 0:
             results["drafts_skipped"].append(docname)
+            continue
+        if doc.docstatus == 2:
+            results["cancelled_skipped"].append(docname)
+            continue
+        if doc.docstatus != 1:
+            reason = f"Unsupported document status: {doc.docstatus}"
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
             continue
 
         # Prevent double queues visually (queue script also catches this, but catch early here)
@@ -210,11 +244,13 @@ def bulk_submit_invoices(docnames):
             if queue_result.get("success"):
                 results["queued"].append(docname)
             else:
-                results["failed_to_queue"].append(
-                    f"{docname} ({queue_result.get('error')})"
-                )
+                reason = str(queue_result.get("error") or "Unknown error")
+                results["failed_to_queue"].append(f"{docname} ({reason})")
+                failed_to_queue_details.append({"name": docname, "error": reason})
         except Exception as e:
-            results["failed_to_queue"].append(f"{docname} ({str(e)})")
+            reason = str(e)
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
 
     # Trigger queue execution
     if results["queued"]:
@@ -233,16 +269,24 @@ def bulk_submit_invoices(docnames):
         msg.append(f"Successfully queued {len(results['queued'])} invoices.")
     if results["drafts_skipped"]:
         msg.append(f"Skipped {len(results['drafts_skipped'])} Draft invoices.")
+    if results["cancelled_skipped"]:
+        msg.append(f"Skipped {len(results['cancelled_skipped'])} Cancelled invoices.")
     if results["already_submitted_skipped"]:
         msg.append(
             f"Skipped {len(results['already_submitted_skipped'])} already submitted invoices."
         )
     if results["failed_to_queue"]:
         msg.append(f"Failed to queue {len(results['failed_to_queue'])} invoices.")
+    msg.append('(Note: Records with status "Draft" or "Cancelled" are not posted to FBR.)')
 
     return {
         "queued_count": len(results["queued"]),
         "results": results,
+        "draft_invoices": list(results["drafts_skipped"]),
+        "cancelled_invoices": list(results["cancelled_skipped"]),
+        "already_submitted_invoices": list(results["already_submitted_skipped"]),
+        "failed_invoices": failed_to_queue_details,
+        "queue_route": "/app/fbr-queue",
         "message": " ".join(msg),
     }
 
@@ -251,6 +295,30 @@ def bulk_submit_invoices(docnames):
 def bulk_submit_sales_invoices(docnames):
     """Compatibility shim for old UI button"""
     return bulk_submit_invoices(docnames)
+
+
+def submit_pos_invoice_on_submit(doc, method):
+    """
+    Called by standard ERPNext hooks when a POS Invoice is submitted.
+    Automatically adds it to the FBR queue for processing.
+    """
+    if not getattr(doc, "custom_submit_to_fbr", 0):
+        return
+
+    from fbr_e_invoicing.api.fbr_queue import add_to_queue
+
+    try:
+        add_to_queue(doctype=doc.doctype, docname=doc.name, status="Pending")
+        frappe.msgprint(
+            "Invoice has been queued for background FBR submission.",
+            title="Queued for FBR",
+            indicator="blue",
+            alert=True,
+        )
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to auto-queue POS Invoice {doc.name}: {str(e)}", "FBR Auto Queue"
+        )
 
 
 def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
@@ -447,9 +515,11 @@ def _persist_fbr_response_fields(doctype, docname, response):
     try:
         doc = frappe.get_doc(doctype, docname)
 
-        doc.custom_fbr_invoice_number = response.get("invoiceNumber", "")
-        doc.custom_fbr_datetime = response.get("dated", "")
-        doc.custom_fbr_status = response.get("validationResponse", {}).get("status", "")
+        doc.custom_fbr_invoice_number = _normalize_text(response.get("invoiceNumber", ""))
+        doc.custom_fbr_datetime = _normalize_datetime_for_db(response.get("dated", ""))
+        doc.custom_fbr_status = _normalize_text(
+            response.get("validationResponse", {}).get("status", "")
+        )
 
         # Determine raw storage field
         response_field = _get_response_storage_field(doctype)
@@ -490,13 +560,15 @@ def _get_stored_fbr_response(doc, status="", invoice_number=""):
                 pass
 
     fallback_response = {}
-    if invoice_number:
-        fallback_response["invoiceNumber"] = invoice_number
-    dated = getattr(doc, "custom_fbr_datetime", "") or ""
+    normalized_invoice_number = _normalize_text(invoice_number)
+    if normalized_invoice_number:
+        fallback_response["invoiceNumber"] = normalized_invoice_number
+    dated = _normalize_text(getattr(doc, "custom_fbr_datetime", ""))
     if dated:
         fallback_response["dated"] = dated
-    if status:
-        fallback_response["validationResponse"] = {"status": status}
+    normalized_status = _normalize_text(status)
+    if normalized_status:
+        fallback_response["validationResponse"] = {"status": normalized_status}
     return fallback_response
 
 

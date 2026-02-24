@@ -8,6 +8,7 @@
   "pral_authorization_token",
   "api_endpoint",
   "mode",
+  "fetch_master_data",
   "is_api_token_valid",
   "hs_codes_retrieved",
   "master_data_retrieved",
@@ -74,12 +75,18 @@
    "in_list_view": 1,
    "label": "Mode",
    "options": "Sandbox Testing\nProduction"
+  },
+  {
+   "description": "Click to fetch HS Codes and UOMs from FBR",
+   "fieldname": "fetch_master_data",
+   "fieldtype": "Button",
+   "label": "Fetch Master Data"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-19 10:21:26.038827",
+ "modified": "2026-02-25 00:16:14.395522",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",
