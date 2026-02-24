@@ -5,107 +5,88 @@ from frappe.utils import now
 import requests
 from requests.exceptions import RequestException
 
-
 RETRYABLE_HTTP_STATUS_CODES = {408, 425, 429}
 
 
 @frappe.whitelist()
 def submit_single_invoice(doctype, docname, is_retry=False):
-    """Submit a single invoice to FBR and return structured status payload."""
+    """
+    Actually submit a single invoice to FBR API.
+    Called ONLY by background worker via queue.
+    """
     start_time = perf_counter()
-    payload = {}
-    queue_id = None
     retry_attempt = 1 if is_retry else 0
-    user_agent, ip_address = _get_request_context()
 
+    # 1. Verification of document and state
     try:
         doc = frappe.get_doc(doctype, docname)
     except Exception as e:
-        error_message = str(e)
-        processing_time = round((perf_counter() - start_time) * 1000, 2)
-        fallback_response = {
-            "validationResponse": {"status": "Error", "error": error_message}
-        }
-        log_fbr_submission(
-            doctype,
-            docname,
-            payload,
-            fallback_response,
-            "Error",
-            retry_attempt=retry_attempt,
-            processing_time=processing_time,
-            user_agent=user_agent,
-            ip_address=ip_address,
+        error_message = (
+            f"Document {doctype} {docname} not found or error loading: {str(e)}"
         )
-        result = {
+        return {
             "success": False,
-            "status": "error",
-            "message": error_message,
-            "response": fallback_response,
-            "queue_id": None,
+            "error": error_message,
             "retryable": False,
             "failure_type": "document_error",
+            "response": {
+                "validationResponse": {"status": "Error", "error": error_message}
+            },
         }
-        result.update(fallback_response)
-        return result
 
-    existing_submission_result = _get_existing_submission_result(doc)
-    if existing_submission_result:
-        _reconcile_open_queue_after_manual_post(
-            doctype=doctype,
-            docname=docname,
-            status=existing_submission_result.get("status"),
-            response=existing_submission_result.get("response") or {},
-            is_retry=is_retry,
-        )
-        return existing_submission_result
+    existing_status = str(getattr(doc, "custom_fbr_status", "")).strip().lower()
+    existing_invoice = str(getattr(doc, "custom_fbr_invoice_number", "")).strip()
 
+    if existing_status == "valid" or existing_invoice:
+        # Already submitted
+        return {
+            "success": True,
+            "status": "already_submitted",
+            "message": "Already completely submitted to FBR.",
+            "response": _get_stored_fbr_response(doc, "Valid", existing_invoice),
+            "retryable": False,
+            "failure_type": "",
+        }
+
+    # 2. Build Payload
     payload_result = _build_payload(doctype, docname)
     if not payload_result.get("success"):
         error_message = payload_result.get("error") or "Unable to build FBR payload"
-        retryable = False
-        failure_type = payload_result.get("failure_type") or "payload_error"
-        queue_id = _auto_queue_failed_submission(
-            doctype, docname, error_message, is_retry, retryable
-        )
-        processing_time = round((perf_counter() - start_time) * 1000, 2)
         fallback_response = {
             "validationResponse": {"status": "Error", "error": error_message}
         }
         log_fbr_submission(
             doctype,
             docname,
-            payload,
+            {},
             fallback_response,
             "Error",
             retry_attempt=retry_attempt,
-            processing_time=processing_time,
-            user_agent=user_agent,
-            ip_address=ip_address,
+            processing_time=round((perf_counter() - start_time) * 1000, 2),
         )
-        result = {
+        return {
             "success": False,
-            "status": "error",
-            "message": error_message,
+            "error": error_message,
+            "retryable": False,
+            "failure_type": payload_result.get("failure_type") or "payload_error",
             "response": fallback_response,
-            "queue_id": queue_id,
-            "retryable": retryable,
-            "failure_type": failure_type,
         }
-        _try_persist_fbr_response_fields(doctype, docname, fallback_response)
-        result.update(fallback_response)
-        return result
 
     payload = payload_result["payload"]
+
+    # 3. HTTP Submit
     api_result = submit_to_fbr_api(payload, doc.name, doctype, is_retry)
     response = api_result.get("data") or {}
     status_code = api_result.get("status_code")
     processing_time = round((perf_counter() - start_time) * 1000, 2)
     api_version = api_result.get("api_version")
 
+    # 4. Handle HTTP Result
     if api_result.get("success"):
         fbr_status = response.get("validationResponse", {}).get("status", "")
-        log_status = "Success" if fbr_status == "Valid" else "Invalid"
+        is_fbr_valid = fbr_status == "Valid"
+        log_status = "Success" if is_fbr_valid else "Invalid"
+
         log_fbr_submission(
             doctype,
             docname,
@@ -115,41 +96,31 @@ def submit_single_invoice(doctype, docname, is_retry=False):
             response_status_code=status_code,
             retry_attempt=retry_attempt,
             processing_time=processing_time,
-            user_agent=user_agent,
-            ip_address=ip_address,
             api_version=api_version,
         )
+
         result = {
-            "success": True,
-            "status": "valid" if fbr_status == "Valid" else "invalid",
-            "message": (
-                "Submitted to FBR"
-                if fbr_status == "Valid"
-                else "Submitted to FBR with Invalid status"
-            ),
+            "success": is_fbr_valid,  # Only full success if API returned 200 AND FBR said Valid
+            "error": f"FBR validation failed: {fbr_status or 'Invalid'}"
+            if not is_fbr_valid
+            else "",
+            "status": "valid" if is_fbr_valid else "invalid",
+            "message": "Submitted to FBR"
+            if is_fbr_valid
+            else "Submitted to FBR with Invalid status",
             "response": response,
-            "queue_id": None,
             "retryable": False,
-            "failure_type": "" if fbr_status == "Valid" else "business_invalid",
+            "failure_type": "" if is_fbr_valid else "business_invalid",
         }
-        _try_persist_fbr_response_fields(doctype, docname, response)
-        _reconcile_open_queue_after_manual_post(
-            doctype=doctype,
-            docname=docname,
-            status="valid" if fbr_status == "Valid" else "invalid",
-            response=response,
-            is_retry=is_retry,
-        )
-        if isinstance(response, dict):
-            result.update(response)
+
+        # Don't try to persist fields inside this function, let the caller (the queue worker) do it
+        # so any database errors trying to save the invoice roll back cleanly with the queue state.
         return result
 
+    # 5. Handle HTTP Failure
     error_message = api_result.get("error") or "FBR submission failed"
     retryable = bool(api_result.get("retryable"))
-    failure_type = api_result.get("failure_type") or "http_error"
-    queue_id = _auto_queue_failed_submission(
-        doctype, docname, error_message, is_retry, retryable
-    )
+
     fallback_response = response if isinstance(response, dict) else {}
     if "validationResponse" not in fallback_response:
         fallback_response["validationResponse"] = {
@@ -166,148 +137,37 @@ def submit_single_invoice(doctype, docname, is_retry=False):
         response_status_code=status_code,
         retry_attempt=retry_attempt,
         processing_time=processing_time,
-        user_agent=user_agent,
-        ip_address=ip_address,
         api_version=api_version,
     )
 
-    result = {
+    return {
         "success": False,
         "status": "error",
-        "message": error_message,
+        "error": error_message,
         "response": fallback_response,
-        "queue_id": queue_id,
         "retryable": retryable,
-        "failure_type": failure_type,
+        "failure_type": api_result.get("failure_type") or "http_error",
     }
-    _try_persist_fbr_response_fields(doctype, docname, fallback_response)
-    result.update(fallback_response)
-    return result
-
-
-def submit_pos_invoice_on_submit(doc, method=None):
-    """Server-side POS fallback to keep submission reliable without client scripts."""
-    if not getattr(doc, "custom_submit_to_fbr", 0):
-        return
-
-    if _has_existing_fbr_submission(doc):
-        return
-
-    try:
-        submission_result = submit_single_invoice("POS Invoice", doc.name, is_retry=False)
-        response = submission_result.get("response") or {}
-        if isinstance(response, dict) and response:
-            _persist_fbr_response_fields("POS Invoice", doc.name, response)
-
-        if not submission_result.get("success"):
-            frappe.log_error(
-                f"POS Invoice {doc.name} FBR submit fallback failed: "
-                f"{submission_result.get('message') or 'Unknown error'}",
-                "FBR POS Auto Submit Fallback",
-            )
-    except Exception as e:
-        frappe.log_error(
-            f"Error in POS Invoice fallback submit for {doc.name}: {str(e)}",
-            "FBR POS Auto Submit Fallback",
-        )
 
 
 @frappe.whitelist()
-def bulk_submit_invoices(doctype, docnames):
-    """Submit multiple invoices to FBR queue"""
-    if isinstance(docnames, str):
-        docnames = json.loads(docnames)
-
-    if not isinstance(docnames, list):
-        frappe.throw("docnames must be a list or JSON array")
-
-    queued_count = 0
-
-    unique_docnames = []
-    seen = set()
-    for name in docnames:
-        docname = str(name or "").strip()
-        if not docname or docname in seen:
-            continue
-        seen.add(docname)
-        unique_docnames.append(docname)
-
-    from fbr_e_invoicing.api.fbr_queue import add_to_queue
-
-    for docname in unique_docnames:
-        try:
-            doc = frappe.get_doc(doctype, docname)
-
-            # Check if already submitted
-            if _is_duplicate_submission(
-                getattr(doc, "custom_fbr_status", ""),
-                getattr(doc, "custom_fbr_invoice_number", ""),
-            ):
-                continue
-
-            queue_result = add_to_queue(
-                doctype=doctype,
-                docname=docname,
-                status="Pending",
-            )
-            if queue_result.get("success"):
-                queued_count += 1
-            else:
-                frappe.log_error(
-                    f"Error queueing {doctype} {docname}: {queue_result.get('error')}",
-                    "FBR Bulk Submit",
-                )
-        except Exception as e:
-            frappe.log_error(f"Error queuing {doctype} {docname}: {str(e)}", "FBR Bulk Submit")
-            continue
-
-    if queued_count:
-        try:
-            from fbr_e_invoicing.api.fbr_queue import process_queue
-
-            process_queue(limit=queued_count)
-        except Exception as e:
-            frappe.log_error(
-                f"Error triggering queue processing for bulk submit: {str(e)}",
-                "FBR Bulk Submit",
-            )
-
-    return {"queued_count": queued_count}
-
-
-@frappe.whitelist()
-def bulk_submit_sales_invoices(docnames):
-    """Queue selected Sales Invoices for FBR submission.
-
-    Keeps FBR logging semantics unchanged:
-    - No FBR Logs entry at queueing time
-    - FBR Logs are written later during actual submit attempts
+def bulk_submit_invoices(docnames):
+    """
+    Queue multiple Sales Invoices for FBR submission.
+    POS invoices queue themselves automatically on submit.
     """
     if isinstance(docnames, str):
-        docnames = json.loads(docnames)
+        try:
+            docnames = json.loads(docnames)
+        except Exception:
+            docnames = [docnames]
 
     if not isinstance(docnames, list):
         frappe.throw("docnames must be a list or JSON array")
 
-    unique_docnames = []
-    seen = set()
-    for name in docnames:
-        if not name:
-            continue
-        docname = str(name).strip()
-        if not docname or docname in seen:
-            continue
-        seen.add(docname)
-        unique_docnames.append(docname)
-
+    unique_docnames = list(set([str(name).strip() for name in docnames if name]))
     if not unique_docnames:
-        return {
-            "queued_count": 0,
-            "queued_invoices": [],
-            "draft_invoices": [],
-            "failed_invoices": [],
-            "queue_route": "/app/fbr-queue",
-        }
+        return {"queued_count": 0, "messages": ["No valid document names provided."]}
 
     invoices = frappe.get_all(
         "Sales Invoice",
@@ -316,65 +176,82 @@ def bulk_submit_sales_invoices(docnames):
     )
 
     invoice_map = {row.name: row for row in invoices}
-    draft_invoices = []
-    already_submitted_invoices = []
-    queued_invoices = []
-    failed_invoices = []
+    results = {
+        "queued": [],
+        "drafts_skipped": [],
+        "already_submitted_skipped": [],
+        "failed_to_queue": [],
+    }
 
     from fbr_e_invoicing.api.fbr_queue import add_to_queue
 
     for docname in unique_docnames:
         doc = invoice_map.get(docname)
         if not doc:
-            failed_invoices.append({"name": docname, "error": "Sales Invoice not found"})
-            frappe.log_error(
-                f"Sales Invoice {docname} not found while bulk queueing",
-                "FBR Bulk Submit Sales Invoice",
-            )
+            results["failed_to_queue"].append(f"{docname} (Not found)")
             continue
 
         if doc.docstatus == 0:
-            draft_invoices.append(docname)
+            results["drafts_skipped"].append(docname)
             continue
 
-        if _is_duplicate_submission(doc.custom_fbr_status, doc.custom_fbr_invoice_number):
-            already_submitted_invoices.append(docname)
+        # Prevent double queues visually (queue script also catches this, but catch early here)
+        if (
+            str(doc.custom_fbr_status or "").strip().lower() == "valid"
+            or str(doc.custom_fbr_invoice_number or "").strip()
+        ):
+            results["already_submitted_skipped"].append(docname)
             continue
 
-        queue_result = add_to_queue(
-            doctype="Sales Invoice",
-            docname=docname,
-            status="Pending",
-        )
-        if queue_result.get("success"):
-            queued_invoices.append(docname)
-        else:
-            error_message = queue_result.get("error") or "Failed to add to queue"
-            failed_invoices.append({"name": docname, "error": error_message})
-            frappe.log_error(
-                f"Error queueing Sales Invoice {docname}: {error_message}",
-                "FBR Bulk Submit Sales Invoice",
+        try:
+            queue_result = add_to_queue(
+                doctype="Sales Invoice", docname=docname, status="Pending"
             )
+            if queue_result.get("success"):
+                results["queued"].append(docname)
+            else:
+                results["failed_to_queue"].append(
+                    f"{docname} ({queue_result.get('error')})"
+                )
+        except Exception as e:
+            results["failed_to_queue"].append(f"{docname} ({str(e)})")
 
-    if queued_invoices:
+    # Trigger queue execution
+    if results["queued"]:
         try:
             from fbr_e_invoicing.api.fbr_queue import process_queue
 
-            process_queue(limit=len(queued_invoices))
+            process_queue(limit=len(results["queued"]))
         except Exception as e:
             frappe.log_error(
-                f"Error triggering queue processing for bulk submit sales invoices: {str(e)}",
-                "FBR Bulk Submit Sales Invoice",
+                f"Error triggering background processing: {str(e)}", "FBR Bulk Submit"
             )
 
+    # Generate user-friendly summary message
+    msg = []
+    if results["queued"]:
+        msg.append(f"Successfully queued {len(results['queued'])} invoices.")
+    if results["drafts_skipped"]:
+        msg.append(f"Skipped {len(results['drafts_skipped'])} Draft invoices.")
+    if results["already_submitted_skipped"]:
+        msg.append(
+            f"Skipped {len(results['already_submitted_skipped'])} already submitted invoices."
+        )
+    if results["failed_to_queue"]:
+        msg.append(f"Failed to queue {len(results['failed_to_queue'])} invoices.")
+
     return {
-        "queued_count": len(queued_invoices),
-        "queued_invoices": queued_invoices,
-        "draft_invoices": draft_invoices,
-        "already_submitted_invoices": already_submitted_invoices,
-        "failed_invoices": failed_invoices,
-        "queue_route": "/app/fbr-queue",
+        "queued_count": len(results["queued"]),
+        "results": results,
+        "message": " ".join(msg),
     }
+
+
+@frappe.whitelist()
+def bulk_submit_sales_invoices(docnames):
+    """Compatibility shim for old UI button"""
+    return bulk_submit_invoices(docnames)
+
 
 def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     """Submit payload to FBR API via HTTP POST and return structured result."""
@@ -385,10 +262,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     if not api_endpoint or not token:
         return {
             "success": False,
-            "error": (
-                "FBR API settings not configured. Please set API Endpoint and Authorization "
-                "Token in 'FBR E-Inv Setup'."
-            ),
+            "error": "FBR API settings not configured in 'FBR E-Inv Setup'.",
             "status_code": None,
             "data": {},
             "api_version": "",
@@ -421,7 +295,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     except RequestException as e:
         return {
             "success": False,
-            "error": f"FBR submission error: {str(e)}",
+            "error": f"FBR HTTP Connection error: {str(e)}",
             "status_code": None,
             "data": {},
             "api_version": "",
@@ -431,7 +305,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     except Exception as e:
         return {
             "success": False,
-            "error": f"FBR submission error: {str(e)}",
+            "error": f"FBR submission internal error: {str(e)}",
             "status_code": None,
             "data": {},
             "api_version": "",
@@ -464,6 +338,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             if err_msg
             else (f" | Body: {text[:500]}" if text else "")
         )
+
         retryable = _is_retryable_http_status(resp.status_code)
         return {
             "success": False,
@@ -488,6 +363,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
         "failure_type": "",
     }
 
+
 def log_fbr_submission(
     document_type,
     document_name,
@@ -505,26 +381,32 @@ def log_fbr_submission(
     """Log FBR submission to FBR Logs"""
     try:
         log_doc = frappe.new_doc("FBR Logs")
-        log_doc.update({
-            "document_type": document_type,
-            "document_name": document_name,
-            "request_payload": json.dumps(payload, indent=2) if payload else "",
-            "response_data": json.dumps(response, indent=2) if response else "",
-            "status": status,
-            "submitted_at": now(),
-            "fbr_invoice_number": response.get("invoiceNumber", "") if response else "",
-            "response_status_code": str(response_status_code or ""),
-            "retry_attempt": retry_attempt or 0,
-            "processing_time": processing_time if processing_time is not None else 0,
-            "user_agent": user_agent or "",
-            "ip_address": ip_address or "",
-            "api_version": api_version or "",
-            "validation_errors": (
-                response.get("validationResponse", {}).get("error")
-                if isinstance(response, dict)
-                else ""
-            ),
-        })
+        log_doc.update(
+            {
+                "document_type": document_type,
+                "document_name": document_name,
+                "request_payload": json.dumps(payload, indent=2) if payload else "",
+                "response_data": json.dumps(response, indent=2) if response else "",
+                "status": status,
+                "submitted_at": now(),
+                "fbr_invoice_number": response.get("invoiceNumber", "")
+                if response
+                else "",
+                "response_status_code": str(response_status_code or ""),
+                "retry_attempt": retry_attempt or 0,
+                "processing_time": processing_time
+                if processing_time is not None
+                else 0,
+                "user_agent": user_agent or "",
+                "ip_address": ip_address or "",
+                "api_version": api_version or "",
+                "validation_errors": (
+                    response.get("validationResponse", {}).get("error")
+                    if isinstance(response, dict)
+                    else ""
+                ),
+            }
+        )
         if defer_insert:
             log_doc.deferred_insert()
         else:
@@ -539,45 +421,19 @@ def _build_payload(doctype, docname):
             from fbr_e_invoicing.api.build_fbr_payload import build_fbr_payload
 
             return {"success": True, "payload": build_fbr_payload(docname)}
+
         if doctype == "POS Invoice":
             from fbr_e_invoicing.api.build_fbr_payload import build_pos_fbr_payload
 
             return {"success": True, "payload": build_pos_fbr_payload(docname)}
+
         return {
             "success": False,
-            "error": "Unknown Doctype error in submit_single_invoice function",
+            "error": "Unsupported Doctype in FBR API submission",
             "failure_type": "payload_error",
         }
     except Exception as e:
         return {"success": False, "error": str(e), "failure_type": "payload_error"}
-
-
-def _auto_queue_failed_submission(doctype, docname, error_message, is_retry, retryable=False):
-    if is_retry or not retryable or doctype not in ("Sales Invoice", "POS Invoice"):
-        return None
-
-    try:
-        from fbr_e_invoicing.api.fbr_queue import add_to_queue
-
-        queue_result = add_to_queue(
-            doctype=doctype,
-            docname=docname,
-            status="Pending",
-            error_message=error_message,
-        )
-        if queue_result.get("success"):
-            return queue_result.get("queue_id")
-        frappe.log_error(
-            f"Failed to auto-queue {doctype} {docname}: {queue_result.get('error')}",
-            "FBR Auto Queue Failure",
-        )
-    except Exception as queue_error:
-        frappe.log_error(
-            f"Error auto-queueing failed submission for {doctype} {docname}: {str(queue_error)}",
-            "FBR Auto Queue Failure",
-        )
-
-    return None
 
 
 def _is_retryable_http_status(status_code):
@@ -587,69 +443,40 @@ def _is_retryable_http_status(status_code):
 
 
 def _persist_fbr_response_fields(doctype, docname, response):
-    update_values = {
-        "custom_fbr_invoice_number": response.get("invoiceNumber", ""),
-        "custom_fbr_datetime": response.get("dated", ""),
-        "custom_fbr_status": response.get("validationResponse", {}).get("status", ""),
-    }
-
-    response_field = _get_response_storage_field(doctype)
-    if response_field:
-        update_values[response_field] = json.dumps(response, indent=2)
-
-    frappe.db.set_value(doctype, docname, update_values)
-
-
-def _try_persist_fbr_response_fields(doctype, docname, response):
-    if not isinstance(response, dict) or not response:
-        return
-
+    """Update Frappe document securely. Ensure data stays atomized with queue"""
     try:
-        _persist_fbr_response_fields(doctype, docname, response)
+        doc = frappe.get_doc(doctype, docname)
+
+        doc.custom_fbr_invoice_number = response.get("invoiceNumber", "")
+        doc.custom_fbr_datetime = response.get("dated", "")
+        doc.custom_fbr_status = response.get("validationResponse", {}).get("status", "")
+
+        # Determine raw storage field
+        response_field = _get_response_storage_field(doctype)
+        if response_field:
+            setattr(doc, response_field, json.dumps(response, indent=2))
+
+        # Update using DB API to avoid heavy document hooks
+        frappe.db.set_value(
+            doctype,
+            docname,
+            {
+                "custom_fbr_invoice_number": doc.custom_fbr_invoice_number,
+                "custom_fbr_datetime": doc.custom_fbr_datetime,
+                "custom_fbr_status": doc.custom_fbr_status,
+                **(
+                    {response_field: getattr(doc, response_field)}
+                    if response_field
+                    else {}
+                ),
+            },
+            update_modified=False,
+        )
     except Exception as e:
         frappe.log_error(
             f"Error persisting FBR response fields for {doctype} {docname}: {str(e)}",
             "FBR Response Persistence",
         )
-
-
-def _get_existing_submission_result(doc):
-    status = (getattr(doc, "custom_fbr_status", "") or "").strip()
-    invoice_number = (getattr(doc, "custom_fbr_invoice_number", "") or "").strip()
-
-    if not _is_duplicate_submission(status, invoice_number):
-        return None
-
-    response = _get_stored_fbr_response(doc, status, invoice_number)
-    message = "Invoice already submitted to FBR."
-    if invoice_number:
-        message = (
-            f"Invoice already submitted to FBR with invoice number {invoice_number}."
-        )
-
-    result = {
-        "success": True,
-        "status": "already_submitted",
-        "message": message,
-        "response": response,
-        "queue_id": None,
-        "retryable": False,
-        "failure_type": "",
-    }
-    if isinstance(response, dict):
-        result.update(response)
-    return result
-
-
-def _is_duplicate_submission(status, invoice_number):
-    normalized_status = (status or "").strip().lower()
-    if normalized_status == "invalid":
-        return False
-
-    if (invoice_number or "").strip():
-        return True
-
-    return normalized_status == "valid"
 
 
 def _get_stored_fbr_response(doc, status="", invoice_number=""):
@@ -658,57 +485,19 @@ def _get_stored_fbr_response(doc, status="", invoice_number=""):
         raw_response = getattr(doc, response_field, "")
         if raw_response:
             try:
-                parsed_response = json.loads(raw_response)
-                if isinstance(parsed_response, dict):
-                    return parsed_response
+                return json.loads(raw_response)
             except Exception:
                 pass
 
     fallback_response = {}
     if invoice_number:
         fallback_response["invoiceNumber"] = invoice_number
-
     dated = getattr(doc, "custom_fbr_datetime", "") or ""
     if dated:
         fallback_response["dated"] = dated
-
     if status:
         fallback_response["validationResponse"] = {"status": status}
-
     return fallback_response
-
-
-def _has_existing_fbr_submission(doc):
-    status = getattr(doc, "custom_fbr_status", "")
-    invoice_number = getattr(doc, "custom_fbr_invoice_number", "")
-    if _is_duplicate_submission(status, invoice_number):
-        return True
-
-    # Protect against stale in-memory doc values during submit hooks.
-    db_values = frappe.db.get_value(
-        doc.doctype,
-        doc.name,
-        ["custom_fbr_status", "custom_fbr_invoice_number"],
-        as_dict=True,
-    ) or {}
-    if _is_duplicate_submission(
-        db_values.get("custom_fbr_status"),
-        db_values.get("custom_fbr_invoice_number"),
-    ):
-        return True
-
-    # Avoid duplicate on-submit fallback when a previous successful submit log exists.
-    if frappe.db.exists(
-        "FBR Logs",
-        {
-            "document_type": doc.doctype,
-            "document_name": doc.name,
-            "status": "Success",
-        },
-    ):
-        return True
-
-    return False
 
 
 def _get_response_storage_field(doctype):
@@ -724,92 +513,38 @@ def _get_request_context():
     request_obj = getattr(frappe.local, "request", None)
     if not request_obj:
         return "", ""
+    return request_obj.headers.get("User-Agent", ""), getattr(
+        frappe.local, "request_ip", ""
+    ) or request_obj.environ.get("REMOTE_ADDR", "")
 
-    user_agent = request_obj.headers.get("User-Agent", "")
-    ip_address = getattr(frappe.local, "request_ip", "") or request_obj.environ.get(
-        "REMOTE_ADDR", ""
-    )
-    return user_agent, ip_address
-
-
-def _reconcile_open_queue_after_manual_post(
-    doctype, docname, status, response=None, is_retry=False
-):
-    if is_retry:
-        return
-
-    normalized_status = (status or "").strip().lower()
-    if normalized_status not in {"valid", "invalid", "already_submitted"}:
-        return
-
-    try:
-        from fbr_e_invoicing.api.fbr_queue import resolve_open_queue_items_for_document
-
-        if normalized_status in {"valid", "already_submitted"}:
-            resolve_open_queue_items_for_document(
-                doctype=doctype,
-                docname=docname,
-                outcome="completed",
-                response=response if isinstance(response, dict) else {},
-            )
-            return
-
-        invalid_message = _build_manual_invalid_queue_message(response)
-        resolve_open_queue_items_for_document(
-            doctype=doctype,
-            docname=docname,
-            outcome="failed",
-            error_message=invalid_message,
-            response=response if isinstance(response, dict) else {},
-        )
-    except Exception as e:
-        frappe.log_error(
-            f"Error reconciling queue for {doctype} {docname}: {str(e)}",
-            "FBR Queue Reconciliation",
-        )
-
-
-def _build_manual_invalid_queue_message(response):
-    base = "Resolved as terminal failure by manual submission (Invalid)"
-    if not isinstance(response, dict):
-        return base
-
-    validation = response.get("validationResponse") or {}
-    status = validation.get("status")
-    status_code = validation.get("statusCode")
-    if status and status_code:
-        return f"{base}: status={status}, statusCode={status_code}"
-    if status:
-        return f"{base}: status={status}"
-    return base
 
 @frappe.whitelist()
 def get_fbr_submission_stats():
     """Get FBR submission statistics"""
     try:
-        stats = frappe.db.sql("""
+        stats = frappe.db.sql(
+            """
             SELECT 
                 status,
                 COUNT(*) as count
             FROM `tabFBR Logs`
             WHERE DATE(submitted_at) = CURDATE()
             GROUP BY status
-        """, as_dict=True)
-        
+        """,
+            as_dict=True,
+        )
+
         # Get queue statistics
-        queue_stats = frappe.db.sql("""
-            SELECT 
-                status,
-                COUNT(*) as count
-            FROM `tabFBR Queue`
+        queue_stats = frappe.db.sql(
+            """
+            SELECT status, COUNT(*) as count 
+            FROM `tabFBR Queue` 
             GROUP BY status
-        """, as_dict=True)
-        
-        return {
-            "today_submissions": stats,
-            "queue_status": queue_stats
-        }
-        
+        """,
+            as_dict=True,
+        )
+
+        return {"today_stats": stats, "queue_stats": queue_stats}
     except Exception as e:
         frappe.log_error(f"Error getting FBR stats: {str(e)}", "FBR Stats")
-        return {"today_submissions": [], "queue_status": []}
+        return {"error": str(e)}
