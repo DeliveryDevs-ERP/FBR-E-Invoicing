@@ -19,6 +19,7 @@ FBR_MODE_MAP = {
     PRODUCTION_MODE_LABEL.casefold(): MODE_PRODUCTION,
 }
 
+
 def _mode_error_message(configured_mode: str | None = None) -> str:
     configured = (configured_mode or "").strip()
     configured_display = configured or "blank"
@@ -60,7 +61,7 @@ def build_fbr_payload(sales_invoice_name: str):
     Build FBR payload for a Sales Invoice per provided mapping.
     Returns a dict (JSON-serializable).
     """
-    doc = frappe.get_doc('Sales Invoice', sales_invoice_name)
+    doc = frappe.get_doc("Sales Invoice", sales_invoice_name)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
     return _build_invoice_payload(doc, invoice_type)
 
@@ -99,11 +100,13 @@ def _build_invoice_payload(doc, invoice_type: str):
 
     buyer_name = customer_tax_data.get("customer_name") or doc.customer_name
     buyer_province = doc.tax_category
-    buyer_address = _get_party_address_text('Customer', doc.customer)
-    seller_tax_id = frappe.db.get_value('Company', doc.company, 'tax_id') if doc.company else None
+    buyer_address = _get_party_address_text("Customer", doc.customer)
+    seller_tax_id = (
+        frappe.db.get_value("Company", doc.company, "tax_id") if doc.company else None
+    )
     seller_name = doc.company
     seller_province = doc.custom_province
-    seller_address = _get_party_address_text('Company', doc.company)
+    seller_address = _get_party_address_text("Company", doc.company)
     buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
     first_sale_type = doc.items[0].custom_sale_type if doc.items else ""
     fbr_mode = _resolve_fbr_mode_or_throw()
@@ -122,10 +125,10 @@ def _build_invoice_payload(doc, invoice_type: str):
         "buyerAddress": (buyer_address or ""),
         "buyerRegistrationType": buyer_registration_type,
         "invoiceRefNo": "",
-        "items": []
+        "items": [],
     }
     if fbr_mode == MODE_SANDBOX:
-        scenario_id = get_scenario_id(first_sale_type, buyer_registration_type)
+        scenario_id = get_scenario_id(first_sale_type)
         if not scenario_id:
             raise frappe.ValidationError(
                 "Unable to resolve Scenario ID for Sandbox Testing mode. "
@@ -135,12 +138,13 @@ def _build_invoice_payload(doc, invoice_type: str):
         payload["scenarioId"] = scenario_id
 
     # --- Items mapping ---
-    for row in (doc.items or []):
+    for row in doc.items or []:
         tax_rate = _first_item_tax_rate(row.item_tax_template)
         value_excl_st = flt(row.rate)
         sales_tax_applicable = round((tax_rate * value_excl_st) / 100.0, 2)
         raw_sale_type = str(row.custom_sale_type or "").strip()
-        payload_sale_type = map_sale_type_for_payload(raw_sale_type, buyer_registration_type)
+        scenario_id = get_scenario_id(raw_sale_type)
+        payload_sale_type = map_sale_type_for_payload(raw_sale_type, scenario_id)
 
         item_entry = {
             "hsCode": (row.custom_hs_code or ""),
@@ -155,15 +159,16 @@ def _build_invoice_payload(doc, invoice_type: str):
             "salesTaxWithheldAtSource": 0.00,
             "extraTax": 0.00,
             "furtherTax": 0.00,
-            "sroScheduleNo": "", 
+            "sroScheduleNo": "",
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
             "saleType": payload_sale_type,
-            "sroItemSerialNo": ""
+            "sroItemSerialNo": "",
         }
         payload["items"].append(item_entry)
 
     return payload
+
 
 def format_rate(tax_rate):
     value = flt(tax_rate)
@@ -172,9 +177,9 @@ def format_rate(tax_rate):
         return f"{int(value)}%"
     else:
         return f"{value}%"
-    
 
-def get_scenario_id(sale_type: str, buyer_registration_type: str | None = None) -> str:
+
+def get_scenario_id(sale_type: str) -> str:
     """
     Fetch scenario_id from FBR Sale Type doctype
     based on the given sale_type.
@@ -184,37 +189,30 @@ def get_scenario_id(sale_type: str, buyer_registration_type: str | None = None) 
     if not normalized_sale_type:
         return ""
 
-    # Standard-rate scenario must be deterministic for production use:
-    # SN001 for registered buyers and SN002 for unregistered buyers.
-    if normalized_sale_type.casefold() == STANDARD_RATE_SALE_TYPE.casefold():
-        registration = (buyer_registration_type or "").strip().lower()
-        return "SN001" if registration == "registered" else "SN002"
-
     try:
         scenario_id = frappe.db.get_value(
-            "FBR Sale Type",   # Doctype name
-            {"name": normalized_sale_type},   # or use {"sale_type": sale_type} if field differs
-            "scenario_id"
+            "FBR Sale Type",  # Doctype name
+            {
+                "name": normalized_sale_type
+            },  # or use {"sale_type": sale_type} if field differs
+            "scenario_id",
         )
         return scenario_id or ""
     except Exception:
         return ""
 
 
-def map_sale_type_for_payload(
-    sale_type: str, buyer_registration_type: str | None = None
-) -> str:
+def map_sale_type_for_payload(sale_type: str, scenario_id: str) -> str:
     """
     Normalize outgoing payload saleType while preserving scenario selection.
 
     For scenarios that intentionally have UI-distinct labels, normalize outgoing
-    payload saleType to the canonical FBR value while keeping scenarioId unchanged.
+    payload saleType to the canonical FBR value based on the scenario_id from the doctype.
     """
     normalized_sale_type = (sale_type or "").strip()
     if not normalized_sale_type:
         return ""
 
-    scenario_id = get_scenario_id(normalized_sale_type, buyer_registration_type)
     if scenario_id in STANDARD_RATE_SCENARIO_IDS:
         return STANDARD_RATE_SALE_TYPE
     if scenario_id in REDUCED_RATE_SCENARIO_IDS:
@@ -224,7 +222,7 @@ def map_sale_type_for_payload(
 
     return normalized_sale_type
 
-  
+
 def _get_party_address_text(link_doctype: str, link_name: str) -> str:
     """
     Find Address via Dynamic Link child table:
@@ -243,8 +241,8 @@ def _get_party_address_text(link_doctype: str, link_name: str) -> str:
             "link_doctype": link_doctype,
             "link_name": link_name,
         },
-        pluck="parent",   # returns list of Address names
-        limit=50
+        pluck="parent",  # returns list of Address names
+        limit=50,
     )
 
     if not address_names:
@@ -258,11 +256,17 @@ def _get_party_address_text(link_doctype: str, link_name: str) -> str:
             "disabled": 0,
         },
         fields=[
-            "name", "address_line1", "address_line2",
-            "city", "state", "pincode", "is_primary_address", "creation"
+            "name",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "pincode",
+            "is_primary_address",
+            "creation",
         ],
         order_by="is_primary_address desc, creation desc",
-        limit=1
+        limit=1,
     )
 
     if not addresses:
@@ -271,7 +275,13 @@ def _get_party_address_text(link_doctype: str, link_name: str) -> str:
     a = addresses[0]
 
     # 3) Compose a readable single-line address
-    parts = [a.get("address_line1"), a.get("address_line2"), a.get("city"), a.get("state"), a.get("pincode")]
+    parts = [
+        a.get("address_line1"),
+        a.get("address_line2"),
+        a.get("city"),
+        a.get("state"),
+        a.get("pincode"),
+    ]
     return ", ".join([p for p in parts if p])
 
 

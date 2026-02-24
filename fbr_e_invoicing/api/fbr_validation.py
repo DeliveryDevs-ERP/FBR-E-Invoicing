@@ -65,9 +65,9 @@ def _collect_sales_invoice_errors(doc, show_messages=False):
         customer = frappe.get_doc("Customer", doc.customer)
         if not customer.tax_id and not customer.custom_province and show_messages:
             frappe.msgprint(
-                _("Customer {0} is missing Tax ID or Province information required for FBR").format(
-                    customer.customer_name
-                ),
+                _(
+                    "Customer {0} is missing Tax ID or Province information required for FBR"
+                ).format(customer.customer_name),
                 alert=True,
                 indicator="orange",
             )
@@ -81,6 +81,7 @@ def _collect_sales_invoice_errors(doc, show_messages=False):
     # Validate items
     validate_fbr_items(doc, errors)
     return errors
+
 
 def validate_fbr_items(doc, errors):
     """Validate FBR specific item requirements"""
@@ -105,13 +106,17 @@ def validate_fbr_items(doc, errors):
             missing_sale_types.append(f"Row {idx}: {item.item_name}")
 
     if missing_hs_codes:
-        errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
+        errors.append(
+            _("Following items are missing HS Codes required for FBR:<br>{0}").format(
+                "<br>".join(missing_hs_codes)
+            )
+        )
 
     if missing_tax_templates:
         errors.append(
-            _("Following items are missing Item Tax Templates required for FBR:<br>{0}").format(
-                "<br>".join(missing_tax_templates)
-            )
+            _(
+                "Following items are missing Item Tax Templates required for FBR:<br>{0}"
+            ).format("<br>".join(missing_tax_templates))
         )
 
     if missing_sale_types:
@@ -121,30 +126,28 @@ def validate_fbr_items(doc, errors):
             )
         )
 
+
 @frappe.whitelist()
 def validate_fbr_document(doctype, docname):
     """API method to validate a document for FBR compliance"""
     try:
         doc = frappe.get_doc(doctype, docname)
         errors = []
-        
+
         if doctype == "Sales Invoice":
             errors.extend(_collect_sales_invoice_errors(doc, show_messages=False))
         elif doctype == "POS Invoice":
             validate_pos_invoice_fbr(doc, errors)
-        
+
         return {
             "valid": len(errors) == 0,
             "errors": errors,
-            "warnings": get_fbr_warnings(doc)
+            "warnings": get_fbr_warnings(doc),
         }
-        
+
     except Exception as e:
-        return {
-            "valid": False,
-            "errors": [str(e)],
-            "warnings": []
-        }
+        return {"valid": False, "errors": [str(e)], "warnings": []}
+
 
 def validate_pos_invoice_fbr(doc, errors):
     """Validate POS Invoice for FBR submission"""
@@ -189,17 +192,25 @@ def validate_pos_invoice_fbr(doc, errors):
             missing_sale_types.append(f"Row {idx}: {item.item_name}")
 
     if missing_hs_codes:
-        errors.append(_("Following items are missing HS Codes required for FBR:<br>{0}").format("<br>".join(missing_hs_codes)))
-
-    if missing_tax_templates:
         errors.append(
-            _("Following items are missing Item Tax Templates required for FBR:<br>{0}").format(
-                "<br>".join(missing_tax_templates)
+            _("Following items are missing HS Codes required for FBR:<br>{0}").format(
+                "<br>".join(missing_hs_codes)
             )
         )
 
+    if missing_tax_templates:
+        errors.append(
+            _(
+                "Following items are missing Item Tax Templates required for FBR:<br>{0}"
+            ).format("<br>".join(missing_tax_templates))
+        )
+
     if missing_sale_types:
-        errors.append(_("Following items are missing Sale Type required for FBR:<br>{0}").format("<br>".join(missing_sale_types)))
+        errors.append(
+            _("Following items are missing Sale Type required for FBR:<br>{0}").format(
+                "<br>".join(missing_sale_types)
+            )
+        )
 
 
 def validate_pos_invoice_fields(doc, method=None):
@@ -212,37 +223,38 @@ def validate_pos_invoice_fields(doc, method=None):
     if errors:
         frappe.throw("<br>".join(errors), title=_("FBR Validation Failed"))
 
+
 def get_fbr_warnings(doc):
     """Get FBR warnings (non-blocking issues)"""
     warnings = []
-    
+
     # Check for optimal submission timing
     current_hour = datetime.now().hour
     if current_hour < 6 or current_hour > 22:
-        warnings.append(_("FBR API may have reduced availability outside business hours"))
-    
+        warnings.append(
+            _("FBR API may have reduced availability outside business hours")
+        )
+
     # Check for duplicate submission
-    if hasattr(doc, 'custom_fbr_invoice_number') and doc.custom_fbr_invoice_number:
+    if hasattr(doc, "custom_fbr_invoice_number") and doc.custom_fbr_invoice_number:
         warnings.append(_("Document already submitted to FBR"))
-    
+
     # Check customer payment terms
-    if hasattr(doc, 'payment_terms_template') and doc.payment_terms_template:
+    if hasattr(doc, "payment_terms_template") and doc.payment_terms_template:
         # Could add specific warnings about payment terms affecting FBR
         pass
-    
+
     return warnings
+
 
 @frappe.whitelist()
 def check_fbr_api_status():
     """Check if FBR API is accessible"""
     try:
         fbr_settings = frappe.get_single("FBR E-Inv Setup")
-        
+
         if not fbr_settings.api_endpoint:
-            return {
-                "status": "error",
-                "message": _("FBR API endpoint not configured")
-            }
+            return {"status": "error", "message": _("FBR API endpoint not configured")}
 
         api_endpoint = (fbr_settings.api_endpoint or "").strip()
         healthcheck_url = _resolve_healthcheck_url(api_endpoint)
@@ -281,7 +293,9 @@ def check_fbr_api_status():
         if response.status_code >= 400:
             return {
                 "status": "error",
-                "message": _("FBR API responded with HTTP {0}").format(response.status_code),
+                "message": _("FBR API responded with HTTP {0}").format(
+                    response.status_code
+                ),
                 "http_status_code": response.status_code,
                 "api_version": api_version,
                 "response_time_ms": elapsed_ms,
@@ -296,17 +310,12 @@ def check_fbr_api_status():
             "response_time_ms": elapsed_ms,
             "checked_url": healthcheck_url,
         }
-        
+
     except RequestException as e:
-        return {
-            "status": "error",
-            "message": f"FBR API check failed: {str(e)}"
-        }
+        return {"status": "error", "message": f"FBR API check failed: {str(e)}"}
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"FBR API check failed: {str(e)}"
-        }
+        return {"status": "error", "message": f"FBR API check failed: {str(e)}"}
+
 
 @frappe.whitelist()
 def get_fbr_compliance_report(from_date=None, to_date=None):
@@ -316,9 +325,10 @@ def get_fbr_compliance_report(from_date=None, to_date=None):
             from_date = frappe.utils.add_days(frappe.utils.today(), -30)
         if not to_date:
             to_date = frappe.utils.today()
-        
+
         # Get submitted invoices in date range
-        submitted_invoices = frappe.db.sql("""
+        submitted_invoices = frappe.db.sql(
+            """
             SELECT 
                 'Sales Invoice' as doctype,
                 name,
@@ -348,17 +358,32 @@ def get_fbr_compliance_report(from_date=None, to_date=None):
             WHERE docstatus = 1 
                 AND posting_date BETWEEN %s AND %s
                 AND custom_submit_to_fbr = 1
-        """, (from_date, to_date, from_date, to_date), as_dict=True)
-        
+        """,
+            (from_date, to_date, from_date, to_date),
+            as_dict=True,
+        )
+
         # Categorize results
         total_invoices = len(submitted_invoices)
-        successful = len([inv for inv in submitted_invoices if inv.custom_fbr_status == 'Valid'])
-        invalid = len([inv for inv in submitted_invoices if inv.custom_fbr_status == 'Invalid'])
-        errors = len([inv for inv in submitted_invoices if inv.custom_fbr_status in ['Error', 'Failed']])
+        successful = len(
+            [inv for inv in submitted_invoices if inv.custom_fbr_status == "Valid"]
+        )
+        invalid = len(
+            [inv for inv in submitted_invoices if inv.custom_fbr_status == "Invalid"]
+        )
+        errors = len(
+            [
+                inv
+                for inv in submitted_invoices
+                if inv.custom_fbr_status in ["Error", "Failed"]
+            ]
+        )
         pending = len([inv for inv in submitted_invoices if not inv.custom_fbr_status])
-        
-        compliance_rate = (successful / total_invoices * 100) if total_invoices > 0 else 0
-        
+
+        compliance_rate = (
+            (successful / total_invoices * 100) if total_invoices > 0 else 0
+        )
+
         return {
             "from_date": from_date,
             "to_date": to_date,
@@ -368,14 +393,15 @@ def get_fbr_compliance_report(from_date=None, to_date=None):
             "errors": errors,
             "pending": pending,
             "compliance_rate": round(compliance_rate, 2),
-            "invoices": submitted_invoices
+            "invoices": submitted_invoices,
         }
-        
+
     except Exception as e:
-        frappe.log_error(f"Error generating FBR compliance report: {str(e)}", "FBR Compliance Report")
-        return {
-            "error": str(e)
-        }
+        frappe.log_error(
+            f"Error generating FBR compliance report: {str(e)}", "FBR Compliance Report"
+        )
+        return {"error": str(e)}
+
 
 def force_today_posting_date(doc, method):
     """Force posting_date/time to 'today' at submit time."""
