@@ -9,6 +9,7 @@
   "api_endpoint",
   "mode",
   "fetch_master_data",
+  "setup_tax_accounts_templates",
   "is_api_token_valid",
   "hs_codes_retrieved",
   "master_data_retrieved",
@@ -81,6 +82,12 @@
    "fieldname": "fetch_master_data",
    "fieldtype": "Button",
    "label": "Fetch Master Data"
+  },
+  {
+   "description": "Optional: create missing Pakistan tax accounts and item tax templates for existing companies.",
+   "fieldname": "setup_tax_accounts_templates",
+   "fieldtype": "Button",
+   "label": "Setup Tax Accounts + Templates"
   }
  ],
  "index_web_pages_for_search": 1,
