@@ -24,6 +24,9 @@ add_to_apps_screen = [
 # Hook on document methods and events
 
 doc_events = {
+    "Company": {
+        "on_update": "fbr_e_invoicing.regional_compliance.overrides.company.on_company_update_setup_pakistan",
+    },
     "Sales Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",

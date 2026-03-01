@@ -1,16 +1,14 @@
 """
-FBR E-Invoicing Test Data Creator (Prevalidated)
-================================================
+FBR E-Invoicing Test Data Creator
+=================================
 
 This module builds a deterministic test dataset for FBR E-Invoicing:
-- Pre-validates candidate payloads against FBR API first.
-- Selects exactly 15 valid + 5 controlled-invalid candidates for each doctype.
-- Enforces at least 2 valid SN002 no-ID buyer candidates in Sales and POS sets.
+- Selects exactly 15 expected-valid + 5 expected-invalid candidates for each doctype.
+- Enforces at least 2 SN002 no-ID buyer candidates in Sales and POS sets.
 - Inserts draft Sales Invoice and POS Invoice documents only (no submit, no queue).
 
 Usage:
   ./bench --site test.local execute create_test_invoices.run
-  ./bench --site test.local execute create_test_invoices.test_payloads_only
   ./bench --site test.local execute create_test_invoices.cleanup
 """
 
@@ -30,8 +28,11 @@ from frappe.utils import flt, nowdate, now_datetime
 # -----------------------------------------------------------------------------
 
 DEFAULT_COMPANY = "Falcon"
+DEFAULT_COMPANY_TAX_ID = "2868087"
 DEFAULT_COUNTRY = "Pakistan"
 DEFAULT_PRICE_LIST = "Standard Selling"
+DEFAULT_COMPANY_BUYER_NTN = "8646347"
+DEFAULT_INDIVIDUAL_BUYER_CNIC = "3130395896547"
 DEFAULT_TARGET_VALID = 15
 DEFAULT_TARGET_INVALID = 5
 DEFAULT_MIN_SN002_NO_ID = 2
@@ -55,8 +56,8 @@ CUSTOMERS = [
         "customer_type": "Company",
         "customer_group": "Commercial",
         "territory": "Pakistan",
-        "tax_id": "6678442-0",
-        "ntn": "66784420",
+        "tax_id": DEFAULT_COMPANY_BUYER_NTN,
+        "ntn": DEFAULT_COMPANY_BUYER_NTN,
         "nic": "",
         "custom_province": "PUNJAB",
         "address": {
@@ -73,8 +74,8 @@ CUSTOMERS = [
         "customer_type": "Company",
         "customer_group": "Commercial",
         "territory": "Pakistan",
-        "tax_id": "8646347",
-        "ntn": "8646347",
+        "tax_id": DEFAULT_COMPANY_BUYER_NTN,
+        "ntn": DEFAULT_COMPANY_BUYER_NTN,
         "nic": "",
         "custom_province": "SINDH",
         "address": {
@@ -93,7 +94,7 @@ CUSTOMERS = [
         "territory": "Pakistan",
         "tax_id": "",
         "ntn": "",
-        "nic": "31303-9589654-7",
+        "nic": DEFAULT_INDIVIDUAL_BUYER_CNIC,
         "custom_province": "CAPITAL TERRITORY",
         "address": {
             "address_line1": "House 12 Street 5 F-8/3",
@@ -676,6 +677,12 @@ def ensure_sales_tax_template_18(company: str, cost_center: str, tax_account: st
 
 def resolve_runtime_config() -> Dict[str, Any]:
     company = _resolve_company()
+    if company == DEFAULT_COMPANY:
+        current_tax_id = (frappe.db.get_value("Company", company, "tax_id") or "").strip()
+        if current_tax_id != DEFAULT_COMPANY_TAX_ID:
+            frappe.db.set_value("Company", company, "tax_id", DEFAULT_COMPANY_TAX_ID)
+            frappe.db.commit()
+
     abbr = frappe.db.get_value("Company", company, "abbr") or "CO"
     currency = frappe.db.get_value("Company", company, "default_currency") or "PKR"
 
@@ -1284,6 +1291,58 @@ def prepare_candidates(
     }
 
 
+def prepare_candidates_without_prevalidation(
+    valid_target=DEFAULT_TARGET_VALID,
+    invalid_target=DEFAULT_TARGET_INVALID,
+    min_sn002_no_id=DEFAULT_MIN_SN002_NO_ID,
+) -> Dict[str, Any]:
+    def _expected_probe_row(candidate: Dict[str, Any]) -> Dict[str, Any]:
+        is_valid = bool(candidate.get("is_expected_valid"))
+        return {
+            "candidate": candidate,
+            "payload": {},
+            "actual_valid": is_valid,
+            "expected_valid": is_valid,
+            "http_status": 200 if is_valid else 400,
+            "fbr_status": "Valid" if is_valid else "Invalid",
+            "error": "" if is_valid else "Controlled invalid (no prevalidation)",
+            "invoice_number": "",
+            "response": {},
+        }
+
+    candidates = materialize_candidates()
+    sales_probe = [
+        _expected_probe_row(c)
+        for c in candidates
+        if "Sales" in _candidate_targets(c)
+    ]
+    pos_probe = [
+        _expected_probe_row(c)
+        for c in candidates
+        if "POS" in _candidate_targets(c)
+    ]
+
+    selected_sales = select_mixed_dataset(
+        sales_probe,
+        valid_target=valid_target,
+        invalid_target=invalid_target,
+        min_sn002_no_id=min_sn002_no_id,
+    )
+    selected_pos = select_mixed_dataset(
+        pos_probe,
+        valid_target=valid_target,
+        invalid_target=invalid_target,
+        min_sn002_no_id=min_sn002_no_id,
+    )
+
+    return {
+        "sales_probe": sales_probe,
+        "pos_probe": pos_probe,
+        "selected_sales": selected_sales,
+        "selected_pos": selected_pos,
+    }
+
+
 def _print_probe_summary(title: str, probe_results: List[Dict[str, Any]], selected: List[Dict[str, Any]] | None = None):
     total = len(probe_results)
     valid = len([r for r in probe_results if r["actual_valid"]])
@@ -1548,12 +1607,11 @@ def run():
     """
     Full flow:
     1) Ensure master/setup data
-    2) Prevalidate candidate payloads against API
-    3) Select deterministic 15 valid + 5 invalid for Sales and POS
-    4) Create draft invoices only (no submit, no queue)
+    2) Select deterministic 15 expected-valid + 5 expected-invalid for Sales and POS
+    3) Create draft invoices only (no submit, no queue)
     """
     print("\n" + "=" * 78)
-    print("FBR TEST DATA CREATOR - PREVALIDATED DRAFT MODE")
+    print("FBR TEST DATA CREATOR - DRAFT MODE (NO PREVALIDATION)")
     print("=" * 78)
 
     runtime = resolve_runtime_config()
@@ -1566,7 +1624,7 @@ def run():
     pos_opening_entry = ensure_pos_opening_entry(runtime, pos_profile, user="Administrator")
     print(f"  Using POS Opening Entry: {pos_opening_entry}")
 
-    results = prepare_candidates(
+    results = prepare_candidates_without_prevalidation(
         valid_target=DEFAULT_TARGET_VALID,
         invalid_target=DEFAULT_TARGET_INVALID,
         min_sn002_no_id=DEFAULT_MIN_SN002_NO_ID,
@@ -1600,6 +1658,11 @@ def run():
         "sales_invoices": sales_names,
         "pos_invoices": pos_names,
     }
+
+
+def run_offline():
+    """Compatibility alias; run now always skips prevalidation."""
+    return run()
 
 
 # -----------------------------------------------------------------------------
