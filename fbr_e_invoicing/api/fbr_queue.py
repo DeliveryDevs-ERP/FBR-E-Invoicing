@@ -350,12 +350,27 @@ def process_queue(limit=50):
         enqueued_count = 0
         for item in queue_items:
             try:
+                claimed_name = frappe.db.get_value(
+                    "FBR Queue",
+                    {"name": item.name, "status": "Pending"},
+                    "name",
+                    for_update=True,
+                    skip_locked=True,
+                )
+                if not claimed_name:
+                    continue
+
+                frappe.db.set_value(
+                    "FBR Queue",
+                    claimed_name,
+                    {"status": "Processing"},
+                )
                 frappe.enqueue(
                     "fbr_e_invoicing.api.fbr_queue._process_single_queue_item",
                     queue="short",
-                    queue_item_name=item.name,
+                    queue_item_name=claimed_name,
                     enqueue_after_commit=True,
-                    job_id=f"fbr_queue_item::{item.name}",
+                    job_id=f"fbr_queue_item::{claimed_name}",
                     deduplicate=True,
                 )
                 enqueued_count += 1
@@ -363,7 +378,7 @@ def process_queue(limit=50):
                 frappe.db.set_value(
                     "FBR Queue",
                     item.name,
-                    {"error_message": f"Enqueue failed: {str(e)}"},
+                    {"status": "Pending", "error_message": f"Enqueue failed: {str(e)}"},
                 )
 
         return {"enqueued_count": enqueued_count, "processed_count": enqueued_count}
@@ -380,7 +395,7 @@ def _process_single_queue_item(queue_item_name):
             return
 
         queue_entry = frappe.get_doc("FBR Queue", queue_item_name)
-        if queue_entry.status != "Pending":
+        if queue_entry.status != "Processing":
             return
 
         previous_max_retries = cint(queue_entry.max_retries)
@@ -397,16 +412,10 @@ def _process_single_queue_item(queue_item_name):
             )
         if retry_fields_changed:
             queue_entry.save(ignore_permissions=True)
-            frappe.db.commit()
 
         if not _has_retry_left(queue_entry):
             _mark_queue_terminal_failure(queue_entry, "Max retries exceeded")
             return
-
-        # Simple Claim
-        queue_entry.status = "Processing"
-        queue_entry.save(ignore_permissions=True)
-        frappe.db.commit()  # Force commit so other workers see it's processing
 
         # Import locally to avoid circular dependencies
         from fbr_e_invoicing.api.fbr_submission import (

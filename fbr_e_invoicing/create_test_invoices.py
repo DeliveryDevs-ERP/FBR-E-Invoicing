@@ -681,7 +681,7 @@ def resolve_runtime_config() -> Dict[str, Any]:
         current_tax_id = (frappe.db.get_value("Company", company, "tax_id") or "").strip()
         if current_tax_id != DEFAULT_COMPANY_TAX_ID:
             frappe.db.set_value("Company", company, "tax_id", DEFAULT_COMPANY_TAX_ID)
-            frappe.db.commit()
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
     abbr = frappe.db.get_value("Company", company, "abbr") or "CO"
     currency = frappe.db.get_value("Company", company, "default_currency") or "PKR"
@@ -833,7 +833,7 @@ def create_customers():
 
         print(f"  {action} customer: {cust.customer_name} ({cust.name})")
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def create_items(runtime: Dict[str, Any]):
@@ -871,7 +871,7 @@ def create_items(runtime: Dict[str, Any]):
 
         print(f"  {action} item: {code} ({item_data['stock_uom']}, HS {item_data['custom_hs_code']})")
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def ensure_price_list_entries(runtime: Dict[str, Any]):
@@ -899,7 +899,7 @@ def ensure_price_list_entries(runtime: Dict[str, Any]):
         ip.price_list_rate = flt(item["value_excl_st"])
         ip.insert(ignore_permissions=True)
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def ensure_stock(runtime: Dict[str, Any]):
@@ -929,7 +929,7 @@ def ensure_stock(runtime: Dict[str, Any]):
         se.submit()
         print(f"  Stock created: {item['item_code']}")
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def ensure_pos_profile(runtime: Dict[str, Any]) -> str:
@@ -958,7 +958,7 @@ def ensure_pos_profile(runtime: Dict[str, Any]) -> str:
     _set_if_field_exists(pos, "taxes_and_charges", runtime["sales_tax_template_18"])
 
     pos.insert(ignore_permissions=True)
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     return pos.name
 
 
@@ -991,7 +991,7 @@ def ensure_pos_opening_entry(runtime: Dict[str, Any], pos_profile: str, user: st
     )
     entry.insert(ignore_permissions=True)
     entry.submit()
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     return entry.name
 
 
@@ -999,7 +999,7 @@ def ensure_pos_settings_for_pos_invoice() -> str:
     current_mode = (frappe.db.get_single_value("POS Settings", "invoice_type") or "").strip()
     if current_mode != "POS Invoice":
         frappe.db.set_single_value("POS Settings", "invoice_type", "POS Invoice")
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit
         print(f"  POS Settings invoice_type switched to POS Invoice (was '{current_mode or 'blank'}').")
     return current_mode
 
@@ -1012,7 +1012,7 @@ def restore_pos_settings_invoice_type(previous_mode: str):
     if current_mode == previous:
         return
     frappe.db.set_single_value("POS Settings", "invoice_type", previous)
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     print(f"  POS Settings invoice_type restored to '{previous}'.")
 
 
@@ -1472,7 +1472,7 @@ def create_sales_invoices(
             f"expected={'VALID' if candidate['is_expected_valid'] else 'INVALID'}"
         )
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     return created
 
 
@@ -1564,7 +1564,7 @@ def create_pos_invoices(
             f"expected={'VALID' if candidate['is_expected_valid'] else 'INVALID'}"
         )
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     return created
 
 
@@ -1773,7 +1773,7 @@ def cleanup():
         except Exception as e:
             print(f"  Failed customer delete {cust_name}: {e}")
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     print("\nCleanup complete.")
 
 
