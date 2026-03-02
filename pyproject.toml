@@ -4,16 +4,20 @@ authors = [
     { name = "osama.ahmed@deliverydevs.com", email = "osama.ahmed@deliverydevs.com"}
 ]
 description = "FBR Digital invoicing integration"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # "frappe~=15.0.0" # Installed and managed by bench.
+    # Add any third-party dependencies your app needs here
 ]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
+
+# Frappe version compatibility
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0,<17.0.0"
 
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]
