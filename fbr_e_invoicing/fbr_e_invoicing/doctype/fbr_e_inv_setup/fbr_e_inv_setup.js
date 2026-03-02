@@ -30,15 +30,23 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 		frappe.call({
 			method: "fbr_e_invoicing.coa_setup.overrides.company.setup_pakistan_for_existing_companies",
 			freeze: true,
-			freeze_message: __("Setting up Pakistan tax accounts and item tax templates..."),
+			freeze_message: __("Setting up Pakistan tax accounts and sales/purchase/item tax templates..."),
 			callback: (r) => {
 				const summary = (r && r.message) || {};
 				const accountsCreated = to_int(summary.accounts_created);
-				const templatesCreated = to_int(summary.item_templates_created);
+				const itemTemplatesCreated = to_int(summary.item_templates_created);
+				const salesTemplatesCreated = to_int(summary.sales_templates_created);
+				const purchaseTemplatesCreated = to_int(summary.purchase_templates_created);
 				const errors = summary.errors || [];
 
-				if (accountsCreated === 0 && templatesCreated === 0 && !errors.length) {
-					frappe.msgprint(__("Accounts have already been set up."));
+				if (
+					accountsCreated === 0 &&
+					itemTemplatesCreated === 0 &&
+					salesTemplatesCreated === 0 &&
+					purchaseTemplatesCreated === 0 &&
+					!errors.length
+				) {
+					frappe.msgprint(__("Accounts and templates have already been set up."));
 					return;
 				}
 
@@ -66,6 +74,14 @@ function render_pakistan_setup_summary(summary) {
 		`<b>${__("Accounts Skipped")}:</b> ${to_int(summary.accounts_skipped)}`,
 		`<b>${__("Item Templates Created")}:</b> ${to_int(summary.item_templates_created)}`,
 		`<b>${__("Item Templates Skipped")}:</b> ${to_int(summary.item_templates_skipped)}`,
+		`<b>${__("Sales Templates Created")}:</b> ${to_int(summary.sales_templates_created)}`,
+		`<b>${__("Sales Templates Skipped")}:</b> ${to_int(summary.sales_templates_skipped)}`,
+		`<b>${__("Sales Templates Disabled")}:</b> ${to_int(summary.sales_templates_disabled)}`,
+		`<b>${__("Sales Template Conflicts")}:</b> ${to_int(summary.sales_template_conflicts)}`,
+		`<b>${__("Purchase Templates Created")}:</b> ${to_int(summary.purchase_templates_created)}`,
+		`<b>${__("Purchase Templates Skipped")}:</b> ${to_int(summary.purchase_templates_skipped)}`,
+		`<b>${__("Purchase Templates Disabled")}:</b> ${to_int(summary.purchase_templates_disabled)}`,
+		`<b>${__("Purchase Template Conflicts")}:</b> ${to_int(summary.purchase_template_conflicts)}`,
 	];
 
 	if (errors.length) {
