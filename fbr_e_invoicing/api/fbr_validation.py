@@ -128,7 +128,7 @@ def validate_fbr_items(doc, errors):
 
 
 @frappe.whitelist()
-def validate_fbr_document(doctype, docname):
+def validate_fbr_document(doctype: str, docname: str):
     """API method to validate a document for FBR compliance"""
     try:
         doc = frappe.get_doc(doctype, docname)
@@ -318,7 +318,9 @@ def check_fbr_api_status():
 
 
 @frappe.whitelist()
-def get_fbr_compliance_report(from_date=None, to_date=None):
+def get_fbr_compliance_report(
+    from_date: str | None = None, to_date: str | None = None
+):
     """Generate FBR compliance report"""
     try:
         if not from_date:

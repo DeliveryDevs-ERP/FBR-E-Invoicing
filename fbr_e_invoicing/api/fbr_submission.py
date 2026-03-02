@@ -1,6 +1,7 @@
 import frappe
 import json
 from time import perf_counter
+from frappe import _
 from frappe.utils import cint, get_datetime, now
 import requests
 from requests.exceptions import RequestException
@@ -29,7 +30,12 @@ def _normalize_datetime_for_db(value):
 
 
 @frappe.whitelist()
-def submit_single_invoice(doctype, docname, is_retry=False, retry_attempt=0):
+def submit_single_invoice(
+    doctype: str,
+    docname: str,
+    is_retry: bool = False,
+    retry_attempt: int = 0,
+):
     """
     Actually submit a single invoice to FBR API.
     Called ONLY by background worker via queue.
@@ -173,7 +179,7 @@ def submit_single_invoice(doctype, docname, is_retry=False, retry_attempt=0):
 
 
 @frappe.whitelist()
-def bulk_submit_invoices(docnames):
+def bulk_submit_invoices(docnames: list[str] | str):
     """
     Queue multiple Sales Invoices for FBR submission.
     POS invoices queue themselves automatically on submit.
@@ -185,7 +191,7 @@ def bulk_submit_invoices(docnames):
             docnames = [docnames]
 
     if not isinstance(docnames, list):
-        frappe.throw("docnames must be a list or JSON array")
+        frappe.throw(_("docnames must be a list or JSON array"))
 
     unique_docnames = list(set([str(name).strip() for name in docnames if name]))
     if not unique_docnames:
@@ -292,7 +298,7 @@ def bulk_submit_invoices(docnames):
 
 
 @frappe.whitelist()
-def bulk_submit_sales_invoices(docnames):
+def bulk_submit_sales_invoices(docnames: list[str] | str):
     """Compatibility shim for old UI button"""
     return bulk_submit_invoices(docnames)
 
@@ -310,8 +316,8 @@ def submit_pos_invoice_on_submit(doc, method):
     try:
         add_to_queue(doctype=doc.doctype, docname=doc.name, status="Pending")
         frappe.msgprint(
-            "Invoice has been queued for background FBR submission.",
-            title="Queued for FBR",
+            _("Invoice has been queued for background FBR submission."),
+            title=_("Queued for FBR"),
             indicator="blue",
             alert=True,
         )

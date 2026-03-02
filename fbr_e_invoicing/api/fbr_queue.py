@@ -183,12 +183,12 @@ def recover_stuck_and_retryable_items():
 
 @frappe.whitelist()
 def add_to_queue(
-    doctype,
-    docname,
-    status="Pending",
-    error_message="",
-    priority=None,
-    max_retries=None,
+    doctype: str,
+    docname: str,
+    status: str = "Pending",
+    error_message: str = "",
+    priority: int | str | None = None,
+    max_retries: int | str | None = None,
 ):
     """Add a document to the FBR queue with strict duplicate prevention."""
     try:
@@ -336,7 +336,7 @@ def add_to_queue(
 
 
 @frappe.whitelist()
-def process_queue(limit=50):
+def process_queue(limit: int | str = 50):
     """Process due pending items by enqueuing each as a background job."""
     try:
         limit = cint(limit) or 50

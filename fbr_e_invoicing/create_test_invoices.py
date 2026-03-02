@@ -20,6 +20,7 @@ from typing import Any, Dict, List
 
 import frappe
 import requests
+from frappe import _
 from frappe.utils import flt, nowdate, now_datetime
 
 
@@ -439,7 +440,7 @@ def _resolve_company(default_company=DEFAULT_COMPANY) -> str:
         return default_company
     fallback = frappe.db.get_value("Company", {}, "name")
     if not fallback:
-        frappe.throw("No Company found. Please create a Company first.")
+        frappe.throw(_("No Company found. Please create a Company first."))
     return fallback
 
 
@@ -480,7 +481,7 @@ def _resolve_cost_center(company: str, preferred: str):
     if not cc:
         cc = frappe.db.get_value("Cost Center", {"is_group": 0}, "name")
     if not cc:
-        frappe.throw("No Cost Center found")
+        frappe.throw(_("No Cost Center found"))
     return cc
 
 
@@ -497,7 +498,7 @@ def _resolve_payment_mode(preferred="Cash") -> str:
         return preferred
     mode = frappe.db.get_value("Mode of Payment", {}, "name")
     if not mode:
-        frappe.throw("No Mode of Payment found")
+        frappe.throw(_("No Mode of Payment found"))
     return mode
 
 
