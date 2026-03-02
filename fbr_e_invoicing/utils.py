@@ -1,5 +1,6 @@
 import frappe
 import requests
+from frappe import _
 
 
 HARDCODED_PROVINCES = [
@@ -345,8 +346,7 @@ def run_master_data_sync():
         popup_message = "<br><br>".join(message_parts)
         log_message = "\n\n".join(
             [
-                f"{item['function']} | Error Code: {item['status_code'] if item['status_code'] is not None else 'N/A'} | "
-                f"Response: {(item['response'] or 'No response')[:2000]}"
+                f"{item['function']} | Error Code: {item['status_code'] if item['status_code'] is not None else 'N/A'} | Response: {(item['response'] or 'No response')[:2000]}"
                 for item in failed
             ]
         )
@@ -412,7 +412,7 @@ def get_fbr_setup_status():
     allowed_roles = {"System Manager", "Accounts Manager"}
     user_roles = set(frappe.get_roles(frappe.session.user))
     if not allowed_roles.intersection(user_roles):
-        frappe.throw("Not permitted", frappe.PermissionError)
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
 
     api_endpoint = (
         frappe.db.get_single_value("FBR E-Inv Setup", "api_endpoint") or ""
