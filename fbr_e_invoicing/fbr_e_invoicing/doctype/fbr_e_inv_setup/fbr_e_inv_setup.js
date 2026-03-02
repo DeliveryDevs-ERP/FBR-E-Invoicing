@@ -16,8 +16,11 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 			method: "fbr_e_invoicing.utils.run_master_data_sync",
 			freeze: true,
 			freeze_message: __("Fetching Master Data..."),
-			callback: () => {
-				frappe.show_alert({ message: __("Master Data Synced Successfully"), indicator: 'green' });
+			callback: (r) => {
+				const result = (r && r.message) || {};
+				if (result.success) {
+					frappe.show_alert({ message: __("Master Data Synced Successfully"), indicator: "green" });
+				}
 				frm.reload_doc();
 			}
 		});
@@ -25,7 +28,7 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 
 	setup_tax_accounts_templates(frm) {
 		frappe.call({
-			method: "fbr_e_invoicing.regional_compliance.overrides.company.setup_pakistan_for_existing_companies",
+			method: "fbr_e_invoicing.coa_setup.overrides.company.setup_pakistan_for_existing_companies",
 			freeze: true,
 			freeze_message: __("Setting up Pakistan tax accounts and item tax templates..."),
 			callback: (r) => {
