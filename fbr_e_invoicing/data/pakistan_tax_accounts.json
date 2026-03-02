@@ -201,8 +201,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Khyber Paktunkhwa",
-      "account_name": "Khyber Paktunkhwa",
+      "key": "Khyber Pakhtunkhwa",
+      "account_name": "Khyber Pakhtunkhwa",
       "parent_key": "Other Receivable",
       "root_type": "Asset",
       "is_group": 1,
@@ -214,7 +214,7 @@
     {
       "key": "Standard Purchases Service Tax Khyber Pakhtunkhwa 15%",
       "account_name": "Standard Purchases Service Tax Khyber Pakhtunkhwa 15%",
-      "parent_key": "Khyber Paktunkhwa",
+      "parent_key": "Khyber Pakhtunkhwa",
       "root_type": "Asset",
       "is_group": 0,
       "account_type": "Tax",
@@ -542,8 +542,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Khyber Paktunkha",
-      "account_name": "Khyber Paktunkha",
+      "key": "Khyber Pakhtunkhwa L",
+      "account_name": "Khyber Pakhtunkhwa L",
       "parent_key": "Other Liabilities",
       "root_type": "Liability",
       "is_group": 1,
@@ -555,7 +555,7 @@
     {
       "key": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
       "account_name": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
-      "parent_key": "Khyber Paktunkha",
+      "parent_key": "Khyber Pakhtunkhwa L",
       "root_type": "Liability",
       "is_group": 0,
       "account_type": "Tax",
