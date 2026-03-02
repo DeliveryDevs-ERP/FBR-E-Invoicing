@@ -1,42 +1,63 @@
 app_name = "fbr_e_invoicing"
-app_title = "FBR E-Invoicing"
+app_title = "Pak Compliance"
 app_publisher = "osama.ahmed@deliverydevs.com"
 app_description = "FBR Digital invoicing integration"
 app_email = "osama.ahmed@deliverydevs.com"
 app_license = "mit"
+app_icon = "octicon octicon-briefcase"  # pick any valid icon class
+app_color = "blue"
+required_apps = ["erpnext"]
+
+
+add_to_apps_screen = [
+    {
+        "name": app_name,
+        "logo": "/assets/fbr_e_invoicing/icon.png",
+        "title": app_title,  # Display name: "Pak Compliance"
+        "route": "/app/pak-compliance",  # Must match workspace 'name' field slug
+        "has_permission": "fbr_e_invoicing.api.permissions.check_app_permission",
+    }
+]
 
 # Document Events
 # ---------------
 # Hook on document methods and events
 
 doc_events = {
-	"POS Invoice": {
-		"after_insert": "fbr_e_invoicing.api.pos_invoice_build_payload.get"
-	},
-	"Sales Invoice": {
-		"validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
-		"before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date"
-	}
+    "Company": {
+        "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
+    },
+    "Sales Invoice": {
+        "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
+        "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+    },
+    "POS Invoice": {
+        "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
+        "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
+    },
+}
+
+doctype_list_js = {
+    "Sales Invoice": "public/js/sales_invoice_list.js",
 }
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-	# Process FBR queue every 15 minutes
-	"cron": {
-		"*/15 * * * *": [
-			"fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"
-		]
-	},
-	# Cleanup old logs and queue items daily at 2 AM
-	# "daily": [
-	# 	"fbr_e_invoicing.api.fbr_maintenance.cleanup_old_records"
-	# ],
-	# Generate FBR reports weekly
-	# "weekly": [
-	# 	"fbr_e_invoicing.api.fbr_reports.generate_weekly_report"
-	# ]
+    # Process FBR queue every 2 minutes
+    "cron": {
+        "*/2 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
+    },
+    # Cleanup old logs and queue items daily at 2 AM
+    # "daily": [
+    # 	"fbr_e_invoicing.api.fbr_maintenance.cleanup_old_records"
+    # ],
+    # Generate FBR reports weekly
+    # "weekly": [
+    # 	"fbr_e_invoicing.api.fbr_reports.generate_weekly_report"
+    # ]
 }
 
 # Custom permissions for FBR related doctypes
@@ -44,6 +65,8 @@ scheduler_events = {
 # 	"FBR Queue": "fbr_e_invoicing.api.permissions.get_fbr_queue_permission_query_conditions",
 # 	"FBR Logs": "fbr_e_invoicing.api.permissions.get_fbr_logs_permission_query_conditions",
 # }
+# [v16 Migration Note]: If enabling has_permission hooks in the future, ensure they explicitly
+# return True to grant access. Returning None will deny access in Frappe v16.
 
 
 # Website Settings
@@ -83,25 +106,25 @@ scheduler_events = {
 
 # Custom fields that should be searchable
 search_fields = {
-	"Sales Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
-	"POS Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"]
+    "Sales Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
+    "POS Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
 }
 
 # Dashboard charts for Desk
 dashboard_charts = [
-	{
-		"chart_name": "FBR Submissions",
-		"chart_type": "Line",
-		"doctype": "FBR Logs",
-		"filters_json": '{"status": "Success"}',
-		"source": "FBR Logs"
-	},
-	{
-		"chart_name": "FBR Queue Status",
-		"chart_type": "Donut",
-		"doctype": "FBR Queue",
-		"source": "FBR Queue"
-	}
+    {
+        "chart_name": "FBR Submissions",
+        "chart_type": "Line",
+        "doctype": "FBR Logs",
+        "filters_json": '{"status": "Success"}',
+        "source": "FBR Logs",
+    },
+    {
+        "chart_name": "FBR Queue Status",
+        "chart_type": "Donut",
+        "doctype": "FBR Queue",
+        "source": "FBR Queue",
+    },
 ]
 
 # Notifications
@@ -143,6 +166,7 @@ dashboard_charts = [
 # -------------------------
 
 after_install = "fbr_e_invoicing.install.after_install"
+after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
 # Backup hook - include FBR data in backups
@@ -159,7 +183,7 @@ include_in_backup = ["FBR Logs", "FBR Queue"]
 # 		"partial": 1,
 # 	},
 # 	{
-# 		"doctype": "FBR Queue", 
+# 		"doctype": "FBR Queue",
 # 		"filter_by": "owner",
 # 		"redact_fields": ["error_message", "fbr_response"],
 # 		"partial": 1,
@@ -173,5 +197,13 @@ include_in_backup = ["FBR Logs", "FBR Queue"]
 # }
 
 fixtures = [
-    {"dt": "Tax Category"}, 
+    {"dt": "Tax Category"},
+    {
+        "dt": "Client Script",
+        "filters": [["name", "in", ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"]]],
+    },
+    {
+        "dt": "Custom HTML Block",
+        "filters": [["name", "in", ["FBR Setup Instructions Block"]]],
+    },
 ]

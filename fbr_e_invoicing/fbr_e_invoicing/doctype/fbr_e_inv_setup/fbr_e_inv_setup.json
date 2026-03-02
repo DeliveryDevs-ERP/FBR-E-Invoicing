@@ -7,6 +7,12 @@
  "field_order": [
   "pral_authorization_token",
   "api_endpoint",
+  "mode",
+  "fetch_master_data",
+  "setup_tax_accounts_templates",
+  "is_api_token_valid",
+  "hs_codes_retrieved",
+  "master_data_retrieved",
   "column_break_kruy",
   "pral_login_id",
   "pral_login_password"
@@ -37,12 +43,57 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "PRAL Login Password"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_api_token_valid",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is API Token Valid",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "hs_codes_retrieved",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "HS Codes Retrieved",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "master_data_retrieved",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Master Data Retrieved",
+   "read_only": 1
+  },
+  {
+   "default": "Sandbox Testing",
+   "description": "Please make sure your API endpoint corresponds to your selected mode.",
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Mode",
+   "options": "Sandbox Testing\nProduction"
+  },
+  {
+   "description": "Click to fetch HS Codes and UOMs from FBR",
+   "fieldname": "fetch_master_data",
+   "fieldtype": "Button",
+   "label": "Fetch Master Data"
+  },
+  {
+   "description": "Optional: create missing Pakistan tax accounts and item tax templates for existing companies.",
+   "fieldname": "setup_tax_accounts_templates",
+   "fieldtype": "Button",
+   "label": "Setup Tax Accounts + Templates"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-21 14:33:39.862076",
+ "modified": "2026-02-25 00:16:14.395522",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Inv Setup",
@@ -59,6 +110,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
