@@ -84,7 +84,7 @@
    "label": "Fetch Master Data"
   },
   {
-   "description": "Optional: create missing Pakistan tax accounts and item tax templates for existing companies.",
+   "description": "Optional: create missing Pakistan tax accounts and item/sales/purchase tax templates for existing companies.",
    "fieldname": "setup_tax_accounts_templates",
    "fieldtype": "Button",
    "label": "Setup Tax Accounts + Templates"
