@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 import frappe
@@ -9,8 +8,6 @@ from frappe.utils import flt, now_datetime
 
 APP_NAME = "fbr_e_invoicing"
 ALLOWED_SETUP_ROLES = {"System Manager", "Accounts Manager"}
-MANAGED_SALES_TEMPLATE_PATTERN = re.compile(r"^(.+)\s+Sales Tax\s+(?P<year>\d{4})$")
-MANAGED_PURCHASE_TEMPLATE_PATTERN = re.compile(r"^(.+)\s+Purchase Tax\s+(?P<year>\d{4})$")
 
 
 def get_data_file_path(file_name: str) -> str:
@@ -31,6 +28,10 @@ def _get_province_tax_charge_template_defaults() -> dict[str, Any]:
     )
 
 
+def _get_tax_withholding_defaults() -> dict[str, Any]:
+    return frappe.get_file_json(get_data_file_path("tax_withholding_defaults.json"))
+
+
 def _current_template_year() -> int:
     return now_datetime().year
 
@@ -39,19 +40,6 @@ def _build_province_template_title(
     province_label: str, template_suffix: str, year: int
 ) -> str:
     return f"{province_label} {template_suffix} {year}"
-
-
-def _managed_template_year(title: str, template_suffix: str) -> int | None:
-    normalized_title = (title or "").strip()
-    if template_suffix == "Sales Tax":
-        match = MANAGED_SALES_TEMPLATE_PATTERN.fullmatch(normalized_title)
-    else:
-        match = MANAGED_PURCHASE_TEMPLATE_PATTERN.fullmatch(normalized_title)
-
-    if not match:
-        return None
-
-    return int(match.group("year"))
 
 
 def _resolve_company_tax_account(
@@ -100,44 +88,38 @@ def _resolve_company_tax_account(
     return account.get("name"), None
 
 
-def _disable_old_managed_tax_templates(
-    company: str,
-    doctype: str,
-    tax_category: str,
-    current_title: str,
-    current_year: int,
-    template_suffix: str,
-) -> tuple[int, list[str]]:
-    disabled_count = 0
-    conflict_titles = []
-    active_templates = frappe.get_all(
-        doctype,
-        filters={
-            "company": company,
-            "tax_category": tax_category,
-            "disabled": 0,
-        },
-        fields=["name", "title"],
+def _resolve_company_account_by_name(
+    company: str, account_name: str, preferred_root_type: str | None = None
+) -> tuple[str | None, str | None]:
+    accounts = frappe.get_all(
+        "Account",
+        filters={"company": company, "account_name": account_name},
+        fields=["name", "is_group", "root_type"],
     )
 
-    for template in active_templates:
-        if template.title == current_title:
-            continue
+    accounts = [account for account in accounts if int(account.get("is_group") or 0) == 0]
 
-        template_year = _managed_template_year(template.title, template_suffix)
-        if template_year is not None and template_year < current_year:
-            frappe.db.set_value(
-                doctype,
-                template.name,
-                {"disabled": 1, "is_default": 0},
-                update_modified=False,
-            )
-            disabled_count += 1
-            continue
+    if preferred_root_type and len(accounts) > 1:
+        preferred_accounts = [
+            account
+            for account in accounts
+            if (account.get("root_type") or "").strip() == preferred_root_type
+        ]
+        if len(preferred_accounts) == 1:
+            return preferred_accounts[0].get("name"), None
 
-        conflict_titles.append(template.title)
+        if len(preferred_accounts) > 1:
+            accounts = preferred_accounts
 
-    return disabled_count, conflict_titles
+    if len(accounts) != 1:
+        return (
+            None,
+            _("Expected exactly one account named {0} in company {1}. Found: {2}").format(
+                frappe.bold(account_name), frappe.bold(company), len(accounts)
+            ),
+        )
+
+    return accounts[0].get("name"), None
 
 
 def _ensure_province_tax_charge_template(
@@ -151,8 +133,6 @@ def _ensure_province_tax_charge_template(
     rate_field: str,
     created_key: str,
     skipped_key: str,
-    disabled_key: str,
-    conflict_key: str,
 ):
     tax_category = (row.get("tax_category") or "").strip()
     province_label = (row.get("province_label") or "").strip()
@@ -181,29 +161,6 @@ def _ensure_province_tax_charge_template(
     if account_error:
         summary["errors"].append(
             _("{0}: {1}").format(frappe.bold(title), account_error)
-        )
-        return
-
-    disabled_count, conflict_titles = _disable_old_managed_tax_templates(
-        company=company,
-        doctype=doctype,
-        tax_category=tax_category,
-        current_title=title,
-        current_year=current_year,
-        template_suffix=template_suffix,
-    )
-    summary[disabled_key] += disabled_count
-
-    if conflict_titles:
-        summary[conflict_key] += 1
-        summary["errors"].append(
-            _(
-                "Skipped {0} for tax category {1} due to active custom/conflicting templates: {2}"
-            ).format(
-                frappe.bold(title),
-                frappe.bold(tax_category),
-                ", ".join(conflict_titles),
-            )
         )
         return
 
@@ -461,12 +418,8 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
     summary = {
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
-        "sales_templates_disabled": 0,
-        "sales_template_conflicts": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
-        "purchase_templates_disabled": 0,
-        "purchase_template_conflicts": 0,
         "errors": [],
     }
 
@@ -489,8 +442,6 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
             rate_field="sales_rate",
             created_key="sales_templates_created",
             skipped_key="sales_templates_skipped",
-            disabled_key="sales_templates_disabled",
-            conflict_key="sales_template_conflicts",
         )
         _ensure_province_tax_charge_template(
             company=company,
@@ -503,10 +454,255 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
             rate_field="purchase_rate",
             created_key="purchase_templates_created",
             skipped_key="purchase_templates_skipped",
-            disabled_key="purchase_templates_disabled",
-            conflict_key="purchase_template_conflicts",
         )
 
+    return summary
+
+
+def ensure_tax_withholding_groups() -> dict[str, Any]:
+    summary = {
+        "withholding_groups_created": 0,
+        "withholding_groups_skipped": 0,
+        "errors": [],
+    }
+
+    defaults = _get_tax_withholding_defaults()
+    groups = defaults.get("tax_withholding_groups", [])
+
+    for row in groups:
+        group_name = (row or "").strip()
+        if not group_name:
+            continue
+
+        if frappe.db.get_value(
+            "Tax Withholding Group", {"group_name": group_name}, "name"
+        ):
+            summary["withholding_groups_skipped"] += 1
+            continue
+
+        try:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Tax Withholding Group",
+                    "group_name": group_name,
+                }
+            )
+            doc.flags.ignore_permissions = True
+            doc.insert(ignore_if_duplicate=True)
+            summary["withholding_groups_created"] += 1
+        except frappe.DuplicateEntryError:
+            summary["withholding_groups_skipped"] += 1
+        except Exception:
+            summary["errors"].append(
+                _("Failed to create Tax Withholding Group {0}").format(group_name)
+            )
+            frappe.log_error(
+                frappe.get_traceback(),
+                "Pakistan Tax Setup: Tax Withholding Group Creation",
+            )
+
+    return summary
+
+
+def _has_matching_withholding_rate(doc, rate: dict[str, Any]) -> bool:
+    for existing in doc.get("rates") or []:
+        if (
+            (existing.tax_withholding_group or "").strip()
+            == (rate.get("tax_withholding_group") or "").strip()
+            and str(existing.from_date or "") == str(rate.get("from_date") or "")
+            and str(existing.to_date or "") == str(rate.get("to_date") or "")
+            and abs(flt(existing.tax_withholding_rate) - flt(rate.get("tax_withholding_rate")))
+            < 0.0001
+            and abs(flt(existing.cumulative_threshold) - flt(rate.get("cumulative_threshold")))
+            < 0.0001
+            and abs(flt(existing.single_threshold) - flt(rate.get("single_threshold")))
+            < 0.0001
+        ):
+            return True
+    return False
+
+
+def _find_withholding_account_for_company(
+    company: str, account_name: str, category_name: str
+) -> tuple[str | None, str | None]:
+    preferred_root_type = None
+    normalized_category_name = (category_name or "").strip().lower()
+    if "(purchases)" in normalized_category_name:
+        preferred_root_type = "Liability"
+    elif "(sales)" in normalized_category_name:
+        preferred_root_type = "Asset"
+
+    account, error = _resolve_company_account_by_name(
+        company, account_name, preferred_root_type
+    )
+    if error:
+        return (
+            None,
+            _("Tax Withholding Category {0}: {1}").format(
+                frappe.bold(category_name), error
+            ),
+        )
+
+    return account, None
+
+
+def ensure_tax_withholding_categories(company: str) -> dict[str, Any]:
+    summary = {
+        "withholding_categories_created": 0,
+        "withholding_categories_skipped": 0,
+        "withholding_category_accounts_linked": 0,
+        "withholding_category_accounts_skipped": 0,
+        "withholding_category_rates_added": 0,
+        "errors": [],
+    }
+
+    if not _is_pakistan_company(company):
+        return summary
+
+    defaults = _get_tax_withholding_defaults()
+    categories = defaults.get("tax_withholding_categories", [])
+
+    for row in categories:
+        category_name = (row.get("name") or "").strip()
+        account_name = (row.get("account_name") or "").strip()
+        rate = row.get("rate") or {}
+
+        if not category_name or not account_name:
+            summary["errors"].append(
+                _("Incomplete Tax Withholding Category config for {0}").format(
+                    frappe.bold(category_name or "Unknown")
+                )
+            )
+            continue
+
+        account, account_error = _find_withholding_account_for_company(
+            company=company,
+            account_name=account_name,
+            category_name=category_name,
+        )
+        if account_error:
+            summary["errors"].append(account_error)
+            continue
+
+        existing_name = frappe.db.get_value(
+            "Tax Withholding Category", {"name": category_name}, "name"
+        )
+
+        if not existing_name:
+            try:
+                doc = frappe.get_doc(
+                    {
+                        "doctype": "Tax Withholding Category",
+                        "name": category_name,
+                        "category_name": row.get("category_name") or "",
+                        "tax_deduction_basis": row.get("tax_deduction_basis")
+                        or "Net Total",
+                        "round_off_tax_amount": int(row.get("round_off_tax_amount") or 0),
+                        "tax_on_excess_amount": int(row.get("tax_on_excess_amount") or 0),
+                        "disable_cumulative_threshold": int(
+                            row.get("disable_cumulative_threshold") or 0
+                        ),
+                        "disable_transaction_threshold": int(
+                            row.get("disable_transaction_threshold") or 0
+                        ),
+                        "rates": [rate],
+                        "accounts": [{"company": company, "account": account}],
+                    }
+                )
+                doc.flags.ignore_permissions = True
+                doc.insert(ignore_if_duplicate=True)
+                summary["withholding_categories_created"] += 1
+                continue
+            except frappe.DuplicateEntryError:
+                existing_name = category_name
+            except Exception:
+                summary["errors"].append(
+                    _("Failed to create Tax Withholding Category {0}").format(category_name)
+                )
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    "Pakistan Tax Setup: Tax Withholding Category Creation",
+                )
+                continue
+
+        summary["withholding_categories_skipped"] += 1
+
+        try:
+            doc = frappe.get_doc("Tax Withholding Category", existing_name)
+            changed = False
+
+            if rate and not _has_matching_withholding_rate(doc, rate):
+                doc.append("rates", rate)
+                summary["withholding_category_rates_added"] += 1
+                changed = True
+
+            company_rows = [
+                row_ for row_ in (doc.get("accounts") or []) if row_.company == company
+            ]
+            if not company_rows:
+                doc.append("accounts", {"company": company, "account": account})
+                summary["withholding_category_accounts_linked"] += 1
+                changed = True
+            elif any((row_.account or "").strip() == account for row_ in company_rows):
+                summary["withholding_category_accounts_skipped"] += 1
+            else:
+                summary["errors"].append(
+                    _(
+                        "Tax Withholding Category {0} already has a different account for company {1}"
+                    ).format(frappe.bold(category_name), frappe.bold(company))
+                )
+
+            if changed:
+                doc.flags.ignore_permissions = True
+                doc.save(ignore_permissions=True)
+        except Exception:
+            summary["errors"].append(
+                _("Failed to update Tax Withholding Category {0}").format(category_name)
+            )
+            frappe.log_error(
+                frappe.get_traceback(),
+                "Pakistan Tax Setup: Tax Withholding Category Update",
+            )
+
+    return summary
+
+
+def ensure_tax_withholding_masters(company: str) -> dict[str, Any]:
+    summary = {
+        "withholding_groups_created": 0,
+        "withholding_groups_skipped": 0,
+        "withholding_categories_created": 0,
+        "withholding_categories_skipped": 0,
+        "withholding_category_accounts_linked": 0,
+        "withholding_category_accounts_skipped": 0,
+        "withholding_category_rates_added": 0,
+        "errors": [],
+    }
+
+    if not _is_pakistan_company(company):
+        return summary
+
+    group_summary = ensure_tax_withholding_groups()
+    category_summary = ensure_tax_withholding_categories(company)
+
+    summary["withholding_groups_created"] = group_summary["withholding_groups_created"]
+    summary["withholding_groups_skipped"] = group_summary["withholding_groups_skipped"]
+    summary["withholding_categories_created"] = category_summary[
+        "withholding_categories_created"
+    ]
+    summary["withholding_categories_skipped"] = category_summary[
+        "withholding_categories_skipped"
+    ]
+    summary["withholding_category_accounts_linked"] = category_summary[
+        "withholding_category_accounts_linked"
+    ]
+    summary["withholding_category_accounts_skipped"] = category_summary[
+        "withholding_category_accounts_skipped"
+    ]
+    summary["withholding_category_rates_added"] = category_summary[
+        "withholding_category_rates_added"
+    ]
+    summary["errors"] = group_summary["errors"] + category_summary["errors"]
     return summary
 
 
@@ -527,12 +723,15 @@ def setup_pakistan_tax_accounts_and_item_templates(
         "item_templates_skipped": 0,
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
-        "sales_templates_disabled": 0,
-        "sales_template_conflicts": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
-        "purchase_templates_disabled": 0,
-        "purchase_template_conflicts": 0,
+        "withholding_groups_created": 0,
+        "withholding_groups_skipped": 0,
+        "withholding_categories_created": 0,
+        "withholding_categories_skipped": 0,
+        "withholding_category_accounts_linked": 0,
+        "withholding_category_accounts_skipped": 0,
+        "withholding_category_rates_added": 0,
         "errors": [],
     }
 
@@ -542,6 +741,7 @@ def setup_pakistan_tax_accounts_and_item_templates(
     account_summary = ensure_pakistan_tax_accounts(company)
     template_summary = ensure_pakistan_item_tax_templates(company)
     province_template_summary = ensure_pakistan_province_tax_charge_templates(company)
+    withholding_summary = ensure_tax_withholding_masters(company)
 
     result["accounts_created"] = account_summary["accounts_created"]
     result["accounts_skipped"] = account_summary["accounts_skipped"]
@@ -549,24 +749,38 @@ def setup_pakistan_tax_accounts_and_item_templates(
     result["item_templates_skipped"] = template_summary["item_templates_skipped"]
     result["sales_templates_created"] = province_template_summary["sales_templates_created"]
     result["sales_templates_skipped"] = province_template_summary["sales_templates_skipped"]
-    result["sales_templates_disabled"] = province_template_summary["sales_templates_disabled"]
-    result["sales_template_conflicts"] = province_template_summary["sales_template_conflicts"]
     result["purchase_templates_created"] = province_template_summary[
         "purchase_templates_created"
     ]
     result["purchase_templates_skipped"] = province_template_summary[
         "purchase_templates_skipped"
     ]
-    result["purchase_templates_disabled"] = province_template_summary[
-        "purchase_templates_disabled"
+    result["withholding_groups_created"] = withholding_summary[
+        "withholding_groups_created"
     ]
-    result["purchase_template_conflicts"] = province_template_summary[
-        "purchase_template_conflicts"
+    result["withholding_groups_skipped"] = withholding_summary[
+        "withholding_groups_skipped"
+    ]
+    result["withholding_categories_created"] = withholding_summary[
+        "withholding_categories_created"
+    ]
+    result["withholding_categories_skipped"] = withholding_summary[
+        "withholding_categories_skipped"
+    ]
+    result["withholding_category_accounts_linked"] = withholding_summary[
+        "withholding_category_accounts_linked"
+    ]
+    result["withholding_category_accounts_skipped"] = withholding_summary[
+        "withholding_category_accounts_skipped"
+    ]
+    result["withholding_category_rates_added"] = withholding_summary[
+        "withholding_category_rates_added"
     ]
     result["errors"] = (
         account_summary["errors"]
         + template_summary["errors"]
         + province_template_summary["errors"]
+        + withholding_summary["errors"]
     )
 
     return result
@@ -592,12 +806,15 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
         "item_templates_skipped": 0,
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
-        "sales_templates_disabled": 0,
-        "sales_template_conflicts": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
-        "purchase_templates_disabled": 0,
-        "purchase_template_conflicts": 0,
+        "withholding_groups_created": 0,
+        "withholding_groups_skipped": 0,
+        "withholding_categories_created": 0,
+        "withholding_categories_skipped": 0,
+        "withholding_category_accounts_linked": 0,
+        "withholding_category_accounts_skipped": 0,
+        "withholding_category_rates_added": 0,
         "errors": [],
         "company_summaries": [],
     }
@@ -613,12 +830,29 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
         summary["item_templates_skipped"] += company_result["item_templates_skipped"]
         summary["sales_templates_created"] += company_result["sales_templates_created"]
         summary["sales_templates_skipped"] += company_result["sales_templates_skipped"]
-        summary["sales_templates_disabled"] += company_result["sales_templates_disabled"]
-        summary["sales_template_conflicts"] += company_result["sales_template_conflicts"]
         summary["purchase_templates_created"] += company_result["purchase_templates_created"]
         summary["purchase_templates_skipped"] += company_result["purchase_templates_skipped"]
-        summary["purchase_templates_disabled"] += company_result["purchase_templates_disabled"]
-        summary["purchase_template_conflicts"] += company_result["purchase_template_conflicts"]
+        summary["withholding_groups_created"] += company_result[
+            "withholding_groups_created"
+        ]
+        summary["withholding_groups_skipped"] += company_result[
+            "withholding_groups_skipped"
+        ]
+        summary["withholding_categories_created"] += company_result[
+            "withholding_categories_created"
+        ]
+        summary["withholding_categories_skipped"] += company_result[
+            "withholding_categories_skipped"
+        ]
+        summary["withholding_category_accounts_linked"] += company_result[
+            "withholding_category_accounts_linked"
+        ]
+        summary["withholding_category_accounts_skipped"] += company_result[
+            "withholding_category_accounts_skipped"
+        ]
+        summary["withholding_category_rates_added"] += company_result[
+            "withholding_category_rates_added"
+        ]
         summary["errors"].extend(company_result["errors"])
 
     summary["success"] = len(summary["errors"]) == 0

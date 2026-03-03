@@ -30,10 +30,12 @@ doc_events = {
     "Sales Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
     },
     "POS Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
         "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
     },
 }

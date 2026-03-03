@@ -311,12 +311,22 @@ def submit_pos_invoice_on_submit(doc, method):
     if not getattr(doc, "custom_submit_to_fbr", 0):
         return
 
-    from fbr_e_invoicing.api.fbr_queue import add_to_queue
+    from fbr_e_invoicing.api.fbr_queue import post_invoice_to_fbr
 
     try:
-        add_to_queue(doctype=doc.doctype, docname=doc.name, status="Pending")
+        result = post_invoice_to_fbr(doctype=doc.doctype, docname=doc.name)
+        if not result or not result.get("success"):
+            raise RuntimeError(result.get("error") if isinstance(result, dict) else "Unknown error")
+
+        state = result.get("state")
+        message = _("Invoice has been queued for background FBR submission.")
+        if state == "moved_to_processing":
+            message = _("Invoice is now being processed for FBR submission.")
+        elif state == "already_processing":
+            message = _("Invoice is already being processed for FBR submission.")
+
         frappe.msgprint(
-            _("Invoice has been queued for background FBR submission."),
+            message,
             title=_("Queued for FBR"),
             indicator="blue",
             alert=True,
@@ -340,7 +350,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             "status_code": None,
             "data": {},
             "api_version": "",
-            "retryable": False,
+            "retryable": True,
             "failure_type": "config_error",
         }
 
