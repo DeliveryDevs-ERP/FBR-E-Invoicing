@@ -1,6 +1,6 @@
 {
   "country": "Pakistan",
-  "description": "Pakistan tax account hierarchy and ledgers derived from implementation source files.",
+  "description": "Pakistan tax account hierarchy and ledgers derived from Chart of Account.xlsx.",
   "accounts": [
     {
       "key": "Application of Funds (Assets)",
@@ -17,6 +17,17 @@
       "key": "Current Assets",
       "account_name": "Current Assets",
       "parent_key": "Application of Funds (Assets)",
+      "root_type": "Asset",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Tax Assets",
+      "account_name": "Tax Assets",
+      "parent_key": "Current Assets",
       "root_type": "Asset",
       "is_group": 1,
       "account_type": null,
@@ -47,8 +58,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 17%",
-      "account_name": "Purchases Tax Services 17%",
+      "key": "Purchases Service Tax 17%",
+      "account_name": "Purchases Service Tax 17%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -58,8 +69,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 16%",
-      "account_name": "Purchases Tax Services 16%",
+      "key": "Purchases Service Tax 16%",
+      "account_name": "Purchases Service Tax 16%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -69,8 +80,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 15%",
-      "account_name": "Purchases Tax Services 15%",
+      "key": "Purchases Service Tax 15%",
+      "account_name": "Purchases Service Tax 15%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -80,8 +91,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 13%",
-      "account_name": "Purchases Tax Services 13%",
+      "key": "Purchases Service Tax 13%",
+      "account_name": "Purchases Service Tax 13%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -91,8 +102,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Standard Purchases Tax Services 13% Sindh",
-      "account_name": "Standard Purchases Tax Services 13% Sindh",
+      "key": "Standard Purchases Service Tax Sindh 13%",
+      "account_name": "Standard Purchases Service Tax Sindh 13%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -102,8 +113,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 10%",
-      "account_name": "Purchases Tax Services 10%",
+      "key": "Purchases Service Tax 10%",
+      "account_name": "Purchases Service Tax 10%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -113,8 +124,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 8%",
-      "account_name": "Purchases Tax Services 8%",
+      "key": "Purchases Service Tax 8%",
+      "account_name": "Purchases Service Tax 8%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -124,8 +135,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 5%",
-      "account_name": "Purchases Tax Services 5%",
+      "key": "Purchases Service Tax 5%",
+      "account_name": "Purchases Service Tax 5%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -135,8 +146,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 3%",
-      "account_name": "Purchases Tax Services 3%",
+      "key": "Purchases Service Tax 3%",
+      "account_name": "Purchases Service Tax 3%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -146,8 +157,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 2%",
-      "account_name": "Purchases Tax Services 2%",
+      "key": "Purchases Service Tax 2%",
+      "account_name": "Purchases Service Tax 2%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -157,8 +168,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 1%",
-      "account_name": "Purchases Tax Services 1%",
+      "key": "Purchases Service Tax 1%",
+      "account_name": "Purchases Service Tax 1%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -168,8 +179,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Purchases Tax Services 0%",
-      "account_name": "Purchases Tax Services 0%",
+      "key": "Purchases Service Tax 0%",
+      "account_name": "Purchases Service Tax 0%",
       "parent_key": "Sindh",
       "root_type": "Asset",
       "is_group": 0,
@@ -223,8 +234,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Islamabad",
-      "account_name": "Islamabad",
+      "key": "Islamabad Capital Territory",
+      "account_name": "Islamabad Capital Territory",
       "parent_key": "Other Receivable",
       "root_type": "Asset",
       "is_group": 1,
@@ -236,7 +247,7 @@
     {
       "key": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
       "account_name": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
-      "parent_key": "Islamabad",
+      "parent_key": "Islamabad Capital Territory",
       "root_type": "Asset",
       "is_group": 0,
       "account_type": "Tax",
@@ -267,8 +278,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Azad Jammu Kashmir",
-      "account_name": "Azad Jammu Kashmir",
+      "key": "Azad Jammu and Kashmir",
+      "account_name": "Azad Jammu and Kashmir",
       "parent_key": "Other Receivable",
       "root_type": "Asset",
       "is_group": 1,
@@ -280,7 +291,7 @@
     {
       "key": "Standard Purchases Service Tax Azad Jammu and Kashmir 16%",
       "account_name": "Standard Purchases Service Tax Azad Jammu and Kashmir 16%",
-      "parent_key": "Azad Jammu Kashmir",
+      "parent_key": "Azad Jammu and Kashmir",
       "root_type": "Asset",
       "is_group": 0,
       "account_type": "Tax",
@@ -289,8 +300,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Gilgit Baltistan",
-      "account_name": "Gilgit Baltistan",
+      "key": "Withholding Tax",
+      "account_name": "Withholding Tax",
       "parent_key": "Other Receivable",
       "root_type": "Asset",
       "is_group": 1,
@@ -300,12 +311,111 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Standard Purchases Service Tax Gilgit Baltistan 0%",
-      "account_name": "Standard Purchases Service Tax Gilgit Baltistan 0%",
-      "parent_key": "Gilgit Baltistan",
+      "key": "Withholding Tax - 1.5%",
+      "account_name": "Withholding Tax - 1.5%",
+      "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
-      "account_type": "Tax",
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 10%",
+      "account_name": "Withholding Tax - 10%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 11%",
+      "account_name": "Withholding Tax - 11%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 4%",
+      "account_name": "Withholding Tax - 4%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 5%",
+      "account_name": "Withholding Tax - 5%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 5.5%",
+      "account_name": "Withholding Tax - 5.5%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 7.5%",
+      "account_name": "Withholding Tax - 7.5%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 8%",
+      "account_name": "Withholding Tax - 8%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 9%",
+      "account_name": "Withholding Tax - 9%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 1%",
+      "account_name": "Withholding Tax - 1%",
+      "parent_key": "Withholding Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": null,
       "tax_rate": 0.0,
       "account_number": null,
       "report_type": "Balance Sheet"
@@ -342,6 +452,39 @@
       "tax_rate": 19.5,
       "account_number": null,
       "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Expenses",
+      "account_name": "Expenses",
+      "parent_key": null,
+      "root_type": "Expense",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Profit and Loss"
+    },
+    {
+      "key": "Indirect Expenses",
+      "account_name": "Indirect Expenses",
+      "parent_key": "Expenses",
+      "root_type": "Expense",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Profit and Loss"
+    },
+    {
+      "key": "Tax Expense",
+      "account_name": "Tax Expense",
+      "parent_key": "Indirect Expenses",
+      "root_type": "Expense",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Profit and Loss"
     },
     {
       "key": "Source of Funds (Liabilities)",
@@ -399,6 +542,160 @@
       "report_type": "Balance Sheet"
     },
     {
+      "key": "Withholding Tax L",
+      "account_name": "Withholding Tax L",
+      "parent_key": "Other Liabilities",
+      "root_type": "Liability",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 6%",
+      "account_name": "Withholding Tax - 6%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 7.5% (L)",
+      "account_name": "Withholding Tax - 7.5%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 8% (L)",
+      "account_name": "Withholding Tax - 8%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 9% (L)",
+      "account_name": "Withholding Tax - 9%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 1% (L)",
+      "account_name": "Withholding Tax - 1%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 1.5% (L)",
+      "account_name": "Withholding Tax - 1.5%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 10% (L)",
+      "account_name": "Withholding Tax - 10%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 11% (L)",
+      "account_name": "Withholding Tax - 11%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 2%",
+      "account_name": "Withholding Tax - 2%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 3.5%",
+      "account_name": "Withholding Tax - 3.5%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 4% (L)",
+      "account_name": "Withholding Tax - 4%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 5% (L)",
+      "account_name": "Withholding Tax - 5%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Withholding Tax - 5.5% (L)",
+      "account_name": "Withholding Tax - 5.5%",
+      "parent_key": "Withholding Tax L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
       "key": "Sindh L",
       "account_name": "Sindh L",
       "parent_key": "Other Liabilities",
@@ -410,8 +707,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 17%",
-      "account_name": "Sales Tax Services 17%",
+      "key": "Sales Service Tax 17%",
+      "account_name": "Sales Service Tax 17%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -421,8 +718,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 16%",
-      "account_name": "Sales Tax Services 16%",
+      "key": "Sales Service Tax 16%",
+      "account_name": "Sales Service Tax 16%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -432,8 +729,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 15%",
-      "account_name": "Sales Tax Services 15%",
+      "key": "Sales Service Tax 15%",
+      "account_name": "Sales Service Tax 15%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -443,8 +740,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 13%",
-      "account_name": "Sales Tax Services 13%",
+      "key": "Sales Service Tax 13%",
+      "account_name": "Sales Service Tax 13%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -454,8 +751,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Standard Sales Tax Services 13% Sindh",
-      "account_name": "Standard Sales Tax Services 13% Sindh",
+      "key": "Standard Sales Service Tax Sindh 13%",
+      "account_name": "Standard Sales Service Tax Sindh 13%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -465,8 +762,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 10%",
-      "account_name": "Sales Tax Services 10%",
+      "key": "Sales Service Tax 10%",
+      "account_name": "Sales Service Tax 10%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -476,8 +773,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 8%",
-      "account_name": "Sales Tax Services 8%",
+      "key": "Sales Service Tax 8%",
+      "account_name": "Sales Service Tax 8%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -487,8 +784,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 5%",
-      "account_name": "Sales Tax Services 5%",
+      "key": "Sales Service Tax 5%",
+      "account_name": "Sales Service Tax 5%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -498,8 +795,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 3%",
-      "account_name": "Sales Tax Services 3%",
+      "key": "Sales Service Tax 3%",
+      "account_name": "Sales Service Tax 3%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -509,8 +806,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 2%",
-      "account_name": "Sales Tax Services 2%",
+      "key": "Sales Service Tax 2%",
+      "account_name": "Sales Service Tax 2%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -520,8 +817,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 1%",
-      "account_name": "Sales Tax Services 1%",
+      "key": "Sales Service Tax 1%",
+      "account_name": "Sales Service Tax 1%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -531,8 +828,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Sales Tax Services 0%",
-      "account_name": "Sales Tax Services 0%",
+      "key": "Sales Service Tax 0%",
+      "account_name": "Sales Service Tax 0%",
       "parent_key": "Sindh L",
       "root_type": "Liability",
       "is_group": 0,
@@ -564,8 +861,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Khyber Pakhtunkhwa L",
-      "account_name": "Khyber Pakhtunkhwa L",
+      "key": "Khyber Pakhtunkhwa (L)",
+      "account_name": "Khyber Pakhtunkhwa",
       "parent_key": "Other Liabilities",
       "root_type": "Liability",
       "is_group": 1,
@@ -577,7 +874,7 @@
     {
       "key": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
       "account_name": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
-      "parent_key": "Khyber Pakhtunkhwa L",
+      "parent_key": "Khyber Pakhtunkhwa (L)",
       "root_type": "Liability",
       "is_group": 0,
       "account_type": "Tax",
@@ -586,8 +883,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Islamabad L",
-      "account_name": "Islamabad L",
+      "key": "Islamabad Capital Territory L",
+      "account_name": "Islamabad Capital Territory L",
       "parent_key": "Other Liabilities",
       "root_type": "Liability",
       "is_group": 1,
@@ -599,7 +896,7 @@
     {
       "key": "Standard Sales Service Tax Islamabad Capital Territory 16%",
       "account_name": "Standard Sales Service Tax Islamabad Capital Territory 16%",
-      "parent_key": "Islamabad L",
+      "parent_key": "Islamabad Capital Territory L",
       "root_type": "Liability",
       "is_group": 0,
       "account_type": "Tax",
@@ -630,8 +927,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Azad Jammu Kashmir L",
-      "account_name": "Azad Jammu Kashmir L",
+      "key": "Azad Jammu and Kashmir L",
+      "account_name": "Azad Jammu and Kashmir L",
       "parent_key": "Other Liabilities",
       "root_type": "Liability",
       "is_group": 1,
@@ -643,33 +940,11 @@
     {
       "key": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
       "account_name": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
-      "parent_key": "Azad Jammu Kashmir L",
+      "parent_key": "Azad Jammu and Kashmir L",
       "root_type": "Liability",
       "is_group": 0,
       "account_type": "Tax",
       "tax_rate": 16.0,
-      "account_number": null,
-      "report_type": "Balance Sheet"
-    },
-    {
-      "key": "Gilgit Baltistan L",
-      "account_name": "Gilgit Baltistan L",
-      "parent_key": "Other Liabilities",
-      "root_type": "Liability",
-      "is_group": 1,
-      "account_type": null,
-      "tax_rate": 0.0,
-      "account_number": null,
-      "report_type": "Balance Sheet"
-    },
-    {
-      "key": "Standard Sales Service Tax Gilgit Baltistan 0%",
-      "account_name": "Standard Sales Service Tax Gilgit Baltistan 0%",
-      "parent_key": "Gilgit Baltistan L",
-      "root_type": "Liability",
-      "is_group": 0,
-      "account_type": "Tax",
-      "tax_rate": 0.0,
       "account_number": null,
       "report_type": "Balance Sheet"
     },

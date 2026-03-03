@@ -1,6 +1,6 @@
 {
   "country": "Pakistan",
-  "description": "Province-wise sales and purchase taxes and charges template defaults for Pakistan.",
+  "description": "Province-wise sales and purchase tax charge template defaults derived from normalized tax accounts/templates.",
   "province_tax_charge_templates": [
     {
       "tax_category": "PUNJAB",
@@ -13,9 +13,9 @@
     {
       "tax_category": "SINDH",
       "province_label": "Sindh",
-      "sales_account_name": "Standard Sales Tax Services 13% Sindh",
+      "sales_account_name": "Standard Sales Service Tax Sindh 13%",
       "sales_rate": 13.0,
-      "purchase_account_name": "Standard Purchases Tax Services 13% Sindh",
+      "purchase_account_name": "Standard Purchases Service Tax Sindh 13%",
       "purchase_rate": 13.0
     },
     {
@@ -35,14 +35,6 @@
       "purchase_rate": 15.0
     },
     {
-      "tax_category": "CAPITAL TERRITORY",
-      "province_label": "Capital Territory",
-      "sales_account_name": "Standard Sales Service Tax Islamabad Capital Territory 16%",
-      "sales_rate": 16.0,
-      "purchase_account_name": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
-      "purchase_rate": 16.0
-    },
-    {
       "tax_category": "AZAD JAMMU AND KASHMIR",
       "province_label": "Azad Jammu and Kashmir",
       "sales_account_name": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
@@ -51,12 +43,12 @@
       "purchase_rate": 16.0
     },
     {
-      "tax_category": "GILGIT BALTISTAN",
-      "province_label": "Gilgit Baltistan",
-      "sales_account_name": "Standard Sales Service Tax Gilgit Baltistan 0%",
-      "sales_rate": 0.0,
-      "purchase_account_name": "Standard Purchases Service Tax Gilgit Baltistan 0%",
-      "purchase_rate": 0.0
+      "tax_category": "CAPITAL TERRITORY",
+      "province_label": "Islamabad Capital Territory",
+      "sales_account_name": "Standard Sales Service Tax Islamabad Capital Territory 16%",
+      "sales_rate": 16.0,
+      "purchase_account_name": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
+      "purchase_rate": 16.0
     }
   ]
 }
