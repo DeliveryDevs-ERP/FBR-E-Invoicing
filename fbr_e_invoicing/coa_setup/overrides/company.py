@@ -198,7 +198,7 @@ def _ensure_province_tax_charge_template(
 
 def _is_pakistan_company(company: str) -> bool:
     country = frappe.db.get_value("Company", company, "country")
-    return (country or "").strip().lower() == "pakistan"
+    return _normalize_country(country) == "pakistan"
 
 
 def _report_type(root_type: str | None) -> str:
@@ -235,6 +235,10 @@ def _ensure_setup_permissions():
     user_roles = set(frappe.get_roles(frappe.session.user))
     if not user_roles.intersection(ALLOWED_SETUP_ROLES):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+
+def _normalize_country(value: str | None) -> str:
+    return (value or "").strip().lower()
 
 
 def ensure_pakistan_tax_accounts(company: str) -> dict[str, Any]:
@@ -420,6 +424,8 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
         "sales_templates_skipped": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
+        "tax_categories_created": 0,
+        "tax_categories_skipped": 0,
         "errors": [],
     }
 
@@ -429,6 +435,38 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
     defaults = _get_province_tax_charge_template_defaults()
     province_rows = defaults.get("province_tax_charge_templates", [])
     current_year = _current_template_year()
+
+    for category_name in {
+        (row.get("tax_category") or "").strip() for row in province_rows
+    }:
+        if not category_name:
+            continue
+
+        if frappe.db.exists("Tax Category", category_name):
+            summary["tax_categories_skipped"] += 1
+            continue
+
+        try:
+            category_doc = frappe.get_doc(
+                {
+                    "doctype": "Tax Category",
+                    "name": category_name,
+                    "title": category_name,
+                }
+            )
+            category_doc.flags.ignore_permissions = True
+            category_doc.insert(ignore_if_duplicate=True)
+            summary["tax_categories_created"] += 1
+        except frappe.DuplicateEntryError:
+            summary["tax_categories_skipped"] += 1
+        except Exception:
+            summary["errors"].append(
+                _("Failed to create Tax Category {0}").format(category_name)
+            )
+            frappe.log_error(
+                frappe.get_traceback(),
+                "Pakistan Tax Setup: Tax Category Creation",
+            )
 
     for row in province_rows:
         _ensure_province_tax_charge_template(
@@ -791,12 +829,16 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
     if not ignore_permissions:
         _ensure_setup_permissions()
 
-    companies = frappe.get_all(
-        "Company",
-        filters={"country": "Pakistan"},
-        pluck="name",
-        order_by="lft asc",
+    companies = frappe.db.sql(
+        """
+        select name
+        from `tabCompany`
+        where lower(trim(ifnull(country, ''))) = 'pakistan'
+        order by lft asc
+        """,
+        as_list=True,
     )
+    companies = [row[0] for row in companies]
 
     summary = {
         "companies_processed": len(companies),
@@ -860,7 +902,17 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
 
 
 def on_company_update_setup_pakistan(doc, method=None):
-    if getattr(doc, "country", None) != "Pakistan":
+    if _normalize_country(getattr(doc, "country", None)) != "pakistan":
+        return
+
+    if not getattr(doc, "name", None):
+        return
+
+    setup_pakistan_tax_accounts_and_item_templates(doc.name, ignore_permissions=True)
+
+
+def on_company_after_insert_setup_pakistan(doc, method=None):
+    if _normalize_country(getattr(doc, "country", None)) != "pakistan":
         return
 
     if not getattr(doc, "name", None):

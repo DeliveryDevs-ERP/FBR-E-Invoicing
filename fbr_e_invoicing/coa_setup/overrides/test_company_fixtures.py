@@ -92,7 +92,7 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "Item Tax Template",
                 {
                     "company": self.company.name,
-                    "title": "Sales Service Tax 17%",
+                    "title": "Sales Service Tax 17% Sindh",
                 },
             )
         )

@@ -311,8 +311,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -1.5%",
-      "account_name": "Withholding Tax -1.5%",
+      "key": "Withholding Tax - 1.5%",
+      "account_name": "Withholding Tax - 1.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -322,8 +322,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -10%",
-      "account_name": "Withholding Tax -10%",
+      "key": "Withholding Tax - 10%",
+      "account_name": "Withholding Tax - 10%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -333,8 +333,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -11%",
-      "account_name": "Withholding Tax -11%",
+      "key": "Withholding Tax - 11%",
+      "account_name": "Withholding Tax - 11%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -344,8 +344,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -4%",
-      "account_name": "Withholding Tax -4%",
+      "key": "Withholding Tax - 4%",
+      "account_name": "Withholding Tax - 4%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -355,8 +355,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -5%",
-      "account_name": "Withholding Tax -5%",
+      "key": "Withholding Tax - 5%",
+      "account_name": "Withholding Tax - 5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -366,8 +366,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -5.5%",
-      "account_name": "Withholding Tax -5.5%",
+      "key": "Withholding Tax - 5.5%",
+      "account_name": "Withholding Tax - 5.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -377,8 +377,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -7.5%",
-      "account_name": "Withholding Tax -7.5%",
+      "key": "Withholding Tax - 7.5%",
+      "account_name": "Withholding Tax - 7.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -388,8 +388,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -8%",
-      "account_name": "Withholding Tax -8%",
+      "key": "Withholding Tax - 8%",
+      "account_name": "Withholding Tax - 8%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -399,8 +399,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -9%",
-      "account_name": "Withholding Tax -9%",
+      "key": "Withholding Tax - 9%",
+      "account_name": "Withholding Tax - 9%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -410,8 +410,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -1%",
-      "account_name": "Withholding Tax -1%",
+      "key": "Withholding Tax - 1%",
+      "account_name": "Withholding Tax - 1%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -553,8 +553,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -6%",
-      "account_name": "Withholding Tax -6%",
+      "key": "Withholding Tax - 6%",
+      "account_name": "Withholding Tax - 6%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -564,8 +564,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -7.5% (L)",
-      "account_name": "Withholding Tax -7.5%",
+      "key": "Withholding Tax - 7.5% (L)",
+      "account_name": "Withholding Tax - 7.5%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -575,8 +575,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -8% (L)",
-      "account_name": "Withholding Tax -8%",
+      "key": "Withholding Tax - 8% (L)",
+      "account_name": "Withholding Tax - 8%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -586,8 +586,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -9% (L)",
-      "account_name": "Withholding Tax -9%",
+      "key": "Withholding Tax - 9% (L)",
+      "account_name": "Withholding Tax - 9%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -597,8 +597,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -1% (L)",
-      "account_name": "Withholding Tax -1%",
+      "key": "Withholding Tax - 1% (L)",
+      "account_name": "Withholding Tax - 1%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -608,8 +608,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -1.5% (L)",
-      "account_name": "Withholding Tax -1.5%",
+      "key": "Withholding Tax - 1.5% (L)",
+      "account_name": "Withholding Tax - 1.5%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -619,8 +619,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -10% (L)",
-      "account_name": "Withholding Tax -10%",
+      "key": "Withholding Tax - 10% (L)",
+      "account_name": "Withholding Tax - 10%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -630,8 +630,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -11% (L)",
-      "account_name": "Withholding Tax -11%",
+      "key": "Withholding Tax - 11% (L)",
+      "account_name": "Withholding Tax - 11%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -641,8 +641,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -2%",
-      "account_name": "Withholding Tax -2%",
+      "key": "Withholding Tax - 2%",
+      "account_name": "Withholding Tax - 2%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -652,8 +652,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -3.5%",
-      "account_name": "Withholding Tax -3.5%",
+      "key": "Withholding Tax - 3.5%",
+      "account_name": "Withholding Tax - 3.5%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -663,8 +663,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -4% (L)",
-      "account_name": "Withholding Tax -4%",
+      "key": "Withholding Tax - 4% (L)",
+      "account_name": "Withholding Tax - 4%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -674,8 +674,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -5% (L)",
-      "account_name": "Withholding Tax -5%",
+      "key": "Withholding Tax - 5% (L)",
+      "account_name": "Withholding Tax - 5%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,
@@ -685,8 +685,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax -5.5% (L)",
-      "account_name": "Withholding Tax -5.5%",
+      "key": "Withholding Tax - 5.5% (L)",
+      "account_name": "Withholding Tax - 5.5%",
       "parent_key": "Withholding Tax L",
       "root_type": "Liability",
       "is_group": 0,

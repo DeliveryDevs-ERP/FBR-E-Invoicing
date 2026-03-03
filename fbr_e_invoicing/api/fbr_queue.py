@@ -1,8 +1,7 @@
 import json
-from datetime import datetime
 
 import frappe
-from croniter import croniter
+from frappe import _
 from frappe.utils import add_to_date, cint, now, now_datetime
 
 DEFAULT_MAX_RETRIES = 5
@@ -11,7 +10,6 @@ MIN_PRIORITY = 1
 MAX_PRIORITY = 10
 STUCK_PROCESSING_TIMEOUT_MINUTES = 30
 VALID_QUEUE_STATUSES = {"Pending", "Processing", "Completed", "Failed"}
-SCHEDULED_RETRY_METHOD = "fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"
 SUPPORTED_DOCUMENT_TYPES = {"Sales Invoice", "POS Invoice"}
 
 
@@ -47,26 +45,8 @@ def _sync_retry_fields(queue_doc):
 
 
 def _get_next_retry_at(reference_time=None):
-    reference = reference_time or now_datetime()
-
-    try:
-        cron_format = frappe.db.get_value(
-            "Scheduled Job Type",
-            {"method": SCHEDULED_RETRY_METHOD, "stopped": 0},
-            "cron_format",
-        )
-        if cron_format:
-            next_execution = croniter(cron_format, reference).get_next(datetime)
-            if next_execution and next_execution > reference:
-                return next_execution
-    except Exception as e:
-        frappe.log_error(
-            f"Unable to resolve scheduler-based retry time: {str(e)}",
-            "FBR Queue Retry Schedule",
-        )
-
-    # Fallback to next scheduler tick eligibility when scheduler metadata isn't available.
-    return reference
+    # Failed items become eligible immediately and are picked up on next scheduler run.
+    return reference_time or now_datetime()
 
 
 def _set_queue_response(queue_doc, response=None):
@@ -748,7 +728,7 @@ def delete_queue_items(queue_ids: list[str] | str):
             queue_ids = [queue_ids]
 
     if not isinstance(queue_ids, list):
-        frappe.throw("queue_ids must be a list or JSON array")
+        frappe.throw(_("queue_ids must be a list or JSON array"))
 
     results = []
     deleted_count = 0
