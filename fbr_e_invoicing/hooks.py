@@ -25,6 +25,7 @@ add_to_apps_screen = [
 
 doc_events = {
     "Company": {
+        "after_insert": "fbr_e_invoicing.coa_setup.overrides.company.on_company_after_insert_setup_pakistan",
         "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
     },
     "Sales Invoice": {
@@ -48,7 +49,7 @@ doctype_list_js = {
 # ---------------
 
 scheduler_events = {
-    # Process FBR queue every 2 minutes
+    # Process FBR queue every 15 minutes
     "cron": {
         "*/15 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
     },
