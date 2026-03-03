@@ -200,7 +200,13 @@ fixtures = [
     {"dt": "Tax Category"},
     {
         "dt": "Client Script",
-        "filters": [["name", "in", ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"]]],
+        "filters": [
+            [
+                "name",
+                "in",
+                ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"],
+            ]
+        ],
     },
     {
         "dt": "Custom HTML Block",

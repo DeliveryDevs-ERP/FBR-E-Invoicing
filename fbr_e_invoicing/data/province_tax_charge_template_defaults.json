@@ -1,0 +1,62 @@
+{
+  "country": "Pakistan",
+  "description": "Province-wise sales and purchase taxes and charges template defaults for Pakistan.",
+  "province_tax_charge_templates": [
+    {
+      "tax_category": "PUNJAB",
+      "province_label": "Punjab",
+      "sales_account_name": "Standard Sales Service Tax Punjab 16%",
+      "sales_rate": 16.0,
+      "purchase_account_name": "Standard Purchases Service Tax Punjab 16%",
+      "purchase_rate": 16.0
+    },
+    {
+      "tax_category": "SINDH",
+      "province_label": "Sindh",
+      "sales_account_name": "Standard Sales Tax Services 13% Sindh",
+      "sales_rate": 13.0,
+      "purchase_account_name": "Standard Purchases Tax Services 13% Sindh",
+      "purchase_rate": 13.0
+    },
+    {
+      "tax_category": "KYBER PAKHTUNKHWA",
+      "province_label": "Khyber Pakhtunkhwa",
+      "sales_account_name": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
+      "sales_rate": 15.0,
+      "purchase_account_name": "Standard Purchases Service Tax Khyber Pakhtunkhwa 15%",
+      "purchase_rate": 15.0
+    },
+    {
+      "tax_category": "BALOCHISTAN",
+      "province_label": "Balochistan",
+      "sales_account_name": "Standard Sales Service Tax Balochistan 15%",
+      "sales_rate": 15.0,
+      "purchase_account_name": "Standard Purchases Service Tax Balochistan 15%",
+      "purchase_rate": 15.0
+    },
+    {
+      "tax_category": "CAPITAL TERRITORY",
+      "province_label": "Capital Territory",
+      "sales_account_name": "Standard Sales Service Tax Islamabad Capital Territory 16%",
+      "sales_rate": 16.0,
+      "purchase_account_name": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
+      "purchase_rate": 16.0
+    },
+    {
+      "tax_category": "AZAD JAMMU AND KASHMIR",
+      "province_label": "Azad Jammu and Kashmir",
+      "sales_account_name": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
+      "sales_rate": 16.0,
+      "purchase_account_name": "Standard Purchases Service Tax Azad Jammu and Kashmir 16%",
+      "purchase_rate": 16.0
+    },
+    {
+      "tax_category": "GILGIT BALTISTAN",
+      "province_label": "Gilgit Baltistan",
+      "sales_account_name": "Standard Sales Service Tax Gilgit Baltistan 0%",
+      "sales_rate": 0.0,
+      "purchase_account_name": "Standard Purchases Service Tax Gilgit Baltistan 0%",
+      "purchase_rate": 0.0
+    }
+  ]
+}

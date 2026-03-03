@@ -289,6 +289,28 @@
       "report_type": "Balance Sheet"
     },
     {
+      "key": "Gilgit Baltistan",
+      "account_name": "Gilgit Baltistan",
+      "parent_key": "Other Receivable",
+      "root_type": "Asset",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Standard Purchases Service Tax Gilgit Baltistan 0%",
+      "account_name": "Standard Purchases Service Tax Gilgit Baltistan 0%",
+      "parent_key": "Gilgit Baltistan",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
       "key": "General Tax",
       "account_name": "General Tax",
       "parent_key": "Other Receivable",
@@ -626,6 +648,28 @@
       "is_group": 0,
       "account_type": "Tax",
       "tax_rate": 16.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Gilgit Baltistan L",
+      "account_name": "Gilgit Baltistan L",
+      "parent_key": "Other Liabilities",
+      "root_type": "Liability",
+      "is_group": 1,
+      "account_type": null,
+      "tax_rate": 0.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "Standard Sales Service Tax Gilgit Baltistan 0%",
+      "account_name": "Standard Sales Service Tax Gilgit Baltistan 0%",
+      "parent_key": "Gilgit Baltistan L",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 0.0,
       "account_number": null,
       "report_type": "Balance Sheet"
     },
