@@ -1,6 +1,8 @@
 import json
+from datetime import datetime
 
 import frappe
+from croniter import croniter
 from frappe.utils import add_to_date, cint, now, now_datetime
 
 DEFAULT_MAX_RETRIES = 5
@@ -48,14 +50,13 @@ def _get_next_retry_at(reference_time=None):
     reference = reference_time or now_datetime()
 
     try:
-        job_name = frappe.db.get_value(
+        cron_format = frappe.db.get_value(
             "Scheduled Job Type",
             {"method": SCHEDULED_RETRY_METHOD, "stopped": 0},
-            "name",
+            "cron_format",
         )
-        if job_name:
-            job_doc = frappe.get_doc("Scheduled Job Type", job_name)
-            next_execution = job_doc.get_next_execution()
+        if cron_format:
+            next_execution = croniter(cron_format, reference).get_next(datetime)
             if next_execution and next_execution > reference:
                 return next_execution
     except Exception as e:
