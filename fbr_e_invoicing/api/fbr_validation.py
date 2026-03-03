@@ -413,6 +413,26 @@ def force_today_posting_date(doc, method):
         doc.posting_time = now_datetime().time()
 
 
+def block_cancel_for_successfully_submitted_fbr_invoice(doc, method=None):
+    """
+    Prevent cancellation of documents already successfully submitted to FBR.
+
+    Blocking condition:
+    - custom_fbr_status is Valid (case-insensitive)
+    - custom_fbr_invoice_number is present
+    """
+    fbr_status = (getattr(doc, "custom_fbr_status", "") or "").strip().lower()
+    fbr_invoice_number = (getattr(doc, "custom_fbr_invoice_number", "") or "").strip()
+
+    if fbr_status == "valid" and fbr_invoice_number:
+        frappe.throw(
+            _(
+                "This cannot be cancelled as it has already been successfully submitted to FBR."
+            ),
+            title=_("Cancellation Not Allowed"),
+        )
+
+
 def _resolve_healthcheck_url(api_endpoint: str) -> str:
     """Use a stable GET-able reference API endpoint for diagnostics."""
     endpoint = (api_endpoint or "").strip()

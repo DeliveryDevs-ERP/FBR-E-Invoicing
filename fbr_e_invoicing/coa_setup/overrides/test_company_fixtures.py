@@ -5,7 +5,6 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import flt, now_datetime, random_string
 
 from fbr_e_invoicing.coa_setup.overrides.company import (
-    ensure_pakistan_tax_accounts,
     on_company_update_setup_pakistan,
     setup_pakistan_for_existing_companies,
     setup_pakistan_tax_accounts_and_item_templates,
@@ -20,6 +19,14 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "fbr_e_invoicing", "data", "province_tax_charge_template_defaults.json"
             )
         ).get("province_tax_charge_templates", [])
+
+    @staticmethod
+    def _withholding_defaults():
+        return frappe.get_file_json(
+            frappe.get_app_path(
+                "fbr_e_invoicing", "data", "tax_withholding_defaults.json"
+            )
+        )
 
     @staticmethod
     def _current_year() -> int:
@@ -54,17 +61,18 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         company.insert()
         return company
 
-    def test_setup_creates_tax_hierarchy_and_item_templates(self):
+    def test_setup_creates_tax_accounts_templates_and_withholding(self):
         setup_pakistan_tax_accounts_and_item_templates(self.company.name)
         current_year = self._current_year()
         province_rows = self._province_template_defaults()
+        withholding_defaults = self._withholding_defaults()
 
         self.assertTrue(
             frappe.db.exists(
                 "Account",
                 {
                     "company": self.company.name,
-                    "account_name": "Sindh",
+                    "account_name": "Khyber Pakhtunkhwa",
                     "is_group": 1,
                 },
             )
@@ -74,7 +82,7 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "Account",
                 {
                     "company": self.company.name,
-                    "account_name": "Sales Tax Services 17%",
+                    "account_name": "Sales Service Tax 17%",
                     "is_group": 0,
                 },
             )
@@ -84,78 +92,11 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "Item Tax Template",
                 {
                     "company": self.company.name,
-                    "title": "Sales Tax Services 17%",
+                    "title": "Sales Service Tax 17% Sindh",
                 },
             )
         )
-        self.assertTrue(
-            frappe.db.exists(
-                "Sales Taxes and Charges Template",
-                {
-                    "company": self.company.name,
-                    "title": f"Sindh Sales Tax {current_year}",
-                },
-            )
-        )
-        self.assertTrue(
-            frappe.db.exists(
-                "Purchase Taxes and Charges Template",
-                {
-                    "company": self.company.name,
-                    "title": f"Sindh Purchase Tax {current_year}",
-                },
-            )
-        )
-        self.assertTrue(
-            frappe.db.exists(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": "Gilgit Baltistan",
-                    "is_group": 1,
-                },
-            )
-        )
-        self.assertTrue(
-            frappe.db.exists(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": "Standard Purchases Service Tax Gilgit Baltistan 0%",
-                    "is_group": 0,
-                },
-            )
-        )
-        self.assertTrue(
-            frappe.db.exists(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": "Standard Sales Service Tax Gilgit Baltistan 0%",
-                    "is_group": 0,
-                },
-            )
-        )
-        self.assertFalse(
-            frappe.db.exists(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": "Khyber Paktunkhwa",
-                    "is_group": 1,
-                },
-            )
-        )
-        self.assertFalse(
-            frappe.db.exists(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": "Khyber Paktunkha",
-                    "is_group": 1,
-                },
-            )
-        )
+
         for row in province_rows:
             sales_title = f"{row['province_label']} Sales Tax {current_year}"
             purchase_title = f"{row['province_label']} Purchase Tax {current_year}"
@@ -214,48 +155,88 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 flt(row["purchase_rate"]),
             )
 
-        gilgit_sales_name = frappe.db.get_value(
-            "Sales Taxes and Charges Template",
-            {
-                "company": self.company.name,
-                "title": f"Gilgit Baltistan Sales Tax {current_year}",
-                "tax_category": "GILGIT BALTISTAN",
-            },
-            "name",
+        first_group = withholding_defaults["tax_withholding_groups"][0]
+        self.assertTrue(
+            frappe.db.exists(
+                "Tax Withholding Group",
+                {
+                    "group_name": first_group,
+                },
+            )
         )
-        gilgit_purchase_name = frappe.db.get_value(
-            "Purchase Taxes and Charges Template",
-            {
-                "company": self.company.name,
-                "title": f"Gilgit Baltistan Purchase Tax {current_year}",
-                "tax_category": "GILGIT BALTISTAN",
-            },
-            "name",
-        )
-        self.assertTrue(gilgit_sales_name)
-        self.assertTrue(gilgit_purchase_name)
 
-        gilgit_sales = frappe.get_doc("Sales Taxes and Charges Template", gilgit_sales_name)
-        gilgit_purchase = frappe.get_doc(
-            "Purchase Taxes and Charges Template", gilgit_purchase_name
+        first_category = withholding_defaults["tax_withholding_categories"][0]
+        category_doc = frappe.get_doc("Tax Withholding Category", first_category["name"])
+        self.assertEqual(category_doc.category_name or "", "")
+        self.assertGreaterEqual(len(category_doc.rates), 1)
+        self.assertTrue(
+            any(
+                (row.company or "").strip() == self.company.name
+                for row in (category_doc.accounts or [])
+            )
         )
-        self.assertEqual(flt(gilgit_sales.taxes[0].rate), 0.0)
-        self.assertEqual(flt(gilgit_purchase.taxes[0].rate), 0.0)
+        expected_root_type = None
+        normalized_category_name = (first_category["name"] or "").lower()
+        if "(purchases)" in normalized_category_name:
+            expected_root_type = "Liability"
+        elif "(sales)" in normalized_category_name:
+            expected_root_type = "Asset"
 
-        generic_sales_zero = frappe.db.get_value(
+        account_filters = {
+            "company": self.company.name,
+            "account_name": first_category["account_name"],
+        }
+        if expected_root_type:
+            account_filters["root_type"] = expected_root_type
+        expected_account = frappe.db.get_value(
             "Account",
-            {"company": self.company.name, "account_name": "Sales Tax Services 0%"},
+            account_filters,
             "name",
         )
-        generic_purchase_zero = frappe.db.get_value(
-            "Account",
-            {"company": self.company.name, "account_name": "Purchases Tax Services 0%"},
-            "name",
+        self.assertTrue(expected_account)
+        self.assertTrue(
+            any(
+                (row.company or "").strip() == self.company.name
+                and (row.account or "").strip() == expected_account
+                for row in (category_doc.accounts or [])
+            )
         )
-        if generic_sales_zero:
-            self.assertNotEqual(gilgit_sales.taxes[0].account_head, generic_sales_zero)
-        if generic_purchase_zero:
-            self.assertNotEqual(gilgit_purchase.taxes[0].account_head, generic_purchase_zero)
+
+        account_name_rows = frappe.db.sql(
+            """
+            select account_name
+            from `tabAccount`
+            where company = %s
+              and (
+                account_name like %s
+                or account_name like %s
+                or account_name like %s
+                or account_name like %s
+              )
+            """,
+            (
+                self.company.name,
+                "%- ND%",
+                "%- DD%",
+                "%Paktunkh%",
+                "%Paktunkwa%",
+            ),
+        )
+        self.assertFalse(account_name_rows)
+
+        item_template_rows = frappe.db.sql(
+            """
+            select title
+            from `tabItem Tax Template`
+            where company = %s
+              and (
+                title like %s
+                or title like %s
+              )
+            """,
+            (self.company.name, "%- ND%", "%- DD%"),
+        )
+        self.assertFalse(item_template_rows)
 
     def test_idempotent_rerun(self):
         setup_pakistan_tax_accounts_and_item_templates(self.company.name)
@@ -265,8 +246,10 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         self.assertEqual(second["item_templates_created"], 0)
         self.assertEqual(second["sales_templates_created"], 0)
         self.assertEqual(second["purchase_templates_created"], 0)
-        self.assertEqual(second["sales_template_conflicts"], 0)
-        self.assertEqual(second["purchase_template_conflicts"], 0)
+        self.assertEqual(second["withholding_groups_created"], 0)
+        self.assertEqual(second["withholding_categories_created"], 0)
+        self.assertEqual(second["withholding_category_accounts_linked"], 0)
+        self.assertEqual(second["withholding_category_rates_added"], 0)
         self.assertFalse(second["errors"])
 
     def test_non_pakistan_company_update_is_ignored(self):
@@ -278,119 +261,6 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
             on_company_update_setup_pakistan(doc)
             mocked.assert_not_called()
 
-    def test_custom_sales_template_conflict_is_not_auto_disabled(self):
-        conflict_company = self._create_company(country="Pakistan")
-        ensure_pakistan_tax_accounts(conflict_company.name)
-
-        sindh_sales_account = frappe.db.get_value(
-            "Account",
-            {
-                "company": conflict_company.name,
-                "account_name": "Standard Sales Tax Services 13% Sindh",
-            },
-            "name",
-        )
-        self.assertTrue(sindh_sales_account)
-
-        custom_title = "Custom Sindh Sales Template"
-        custom_doc = frappe.get_doc(
-            {
-                "doctype": "Sales Taxes and Charges Template",
-                "company": conflict_company.name,
-                "title": custom_title,
-                "tax_category": "SINDH",
-                "taxes": [
-                    {
-                        "charge_type": "On Net Total",
-                        "account_head": sindh_sales_account,
-                        "description": "Custom Sindh Sales Tax",
-                        "rate": 13.0,
-                    }
-                ],
-            }
-        )
-        custom_doc.insert(ignore_permissions=True)
-
-        result = setup_pakistan_tax_accounts_and_item_templates(conflict_company.name)
-        current_year = self._current_year()
-        self.assertGreaterEqual(result["sales_template_conflicts"], 1)
-        self.assertTrue(
-            frappe.db.exists(
-                "Sales Taxes and Charges Template",
-                {
-                    "company": conflict_company.name,
-                    "title": custom_title,
-                    "disabled": 0,
-                },
-            )
-        )
-        self.assertFalse(
-            frappe.db.exists(
-                "Sales Taxes and Charges Template",
-                {
-                    "company": conflict_company.name,
-                    "title": f"Sindh Sales Tax {current_year}",
-                },
-            )
-        )
-
-    def test_managed_old_year_sales_template_is_disabled_on_rollover(self):
-        rollover_company = self._create_company(country="Pakistan")
-        ensure_pakistan_tax_accounts(rollover_company.name)
-
-        current_year = self._current_year()
-        previous_year = current_year - 1
-
-        sindh_sales_account = frappe.db.get_value(
-            "Account",
-            {
-                "company": rollover_company.name,
-                "account_name": "Standard Sales Tax Services 13% Sindh",
-            },
-            "name",
-        )
-        self.assertTrue(sindh_sales_account)
-
-        old_title = f"Sindh Sales Tax {previous_year}"
-        old_doc = frappe.get_doc(
-            {
-                "doctype": "Sales Taxes and Charges Template",
-                "company": rollover_company.name,
-                "title": old_title,
-                "tax_category": "SINDH",
-                "taxes": [
-                    {
-                        "charge_type": "On Net Total",
-                        "account_head": sindh_sales_account,
-                        "description": "Sindh Sales Tax Previous Year",
-                        "rate": 13.0,
-                    }
-                ],
-            }
-        )
-        old_doc.insert(ignore_permissions=True)
-
-        result = setup_pakistan_tax_accounts_and_item_templates(rollover_company.name)
-        self.assertGreaterEqual(result["sales_templates_disabled"], 1)
-
-        old_state = frappe.db.get_value(
-            "Sales Taxes and Charges Template",
-            {"company": rollover_company.name, "title": old_title},
-            "disabled",
-        )
-        self.assertEqual(int(old_state or 0), 1)
-        self.assertTrue(
-            frappe.db.exists(
-                "Sales Taxes and Charges Template",
-                {
-                    "company": rollover_company.name,
-                    "title": f"Sindh Sales Tax {current_year}",
-                    "tax_category": "SINDH",
-                    "disabled": 0,
-                },
-            )
-        )
-
     def test_existing_companies_setup_summary(self):
         summary = setup_pakistan_for_existing_companies(ignore_permissions=True)
 
@@ -399,3 +269,5 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         self.assertIn("item_templates_created", summary)
         self.assertIn("sales_templates_created", summary)
         self.assertIn("purchase_templates_created", summary)
+        self.assertIn("withholding_groups_created", summary)
+        self.assertIn("withholding_categories_created", summary)

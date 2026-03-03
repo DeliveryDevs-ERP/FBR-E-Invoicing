@@ -25,15 +25,18 @@ add_to_apps_screen = [
 
 doc_events = {
     "Company": {
+        "after_insert": "fbr_e_invoicing.coa_setup.overrides.company.on_company_after_insert_setup_pakistan",
         "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
     },
     "Sales Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
     },
     "POS Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
         "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
     },
 }
@@ -46,7 +49,7 @@ doctype_list_js = {
 # ---------------
 
 scheduler_events = {
-    # Process FBR queue every 2 minutes
+    # Process FBR queue every 15 minutes
     "cron": {
         "*/15 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
     },

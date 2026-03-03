@@ -77,6 +77,7 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Pending\nProcessing\nCompleted\nFailed",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -164,6 +165,20 @@
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
+  {
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "write": 1
+  },
   {
    "create": 1,
    "delete": 1,
