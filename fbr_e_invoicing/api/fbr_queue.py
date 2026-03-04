@@ -39,70 +39,7 @@ def _set_queue_response(queue_doc, response=None):
         queue_doc.fbr_response = json.dumps(response, indent=2)
 
 
-def _parse_queue_response(queue_doc):
-    raw_response = getattr(queue_doc, "fbr_response", "")
-    if not raw_response:
-        return {}
-    try:
-        parsed = json.loads(raw_response)
-        return parsed if isinstance(parsed, dict) else {}
-    except Exception:
-        return {}
-
-
-def _clear_failed_logs_for_document(doctype, docname):
-    try:
-        failed_log_names = frappe.get_all(
-            "FBR Logs",
-            filters={
-                "document_type": doctype,
-                "document_name": docname,
-                "status": "Failed",
-            },
-            pluck="name",
-            limit_page_length=0,
-        )
-        for log_name in failed_log_names:
-            frappe.delete_doc("FBR Logs", log_name, ignore_permissions=True)
-        return len(failed_log_names)
-    except Exception as e:
-        frappe.log_error(
-            f"Error clearing failed logs for {doctype} {docname}: {str(e)}",
-            "FBR Failed Log Cleanup",
-        )
-        return 0
-
-
-def _log_failed_and_remove_queue_item(
-    queue_doc, error_message=None, response=None, retry_attempt=None
-):
-    response_payload = response if isinstance(response, dict) and response else _parse_queue_response(queue_doc)
-    message = str(error_message or queue_doc.error_message or "Max retries exceeded").strip()
-    if "validationResponse" not in response_payload:
-        response_payload["validationResponse"] = {
-            "status": "Error",
-            "error": message,
-        }
-    elif isinstance(response_payload.get("validationResponse"), dict) and not response_payload["validationResponse"].get("error"):
-        response_payload["validationResponse"]["error"] = message
-
-    try:
-        from fbr_e_invoicing.api.fbr_submission import log_fbr_submission
-
-        log_fbr_submission(
-            queue_doc.document_type,
-            queue_doc.document_name,
-            {},
-            response_payload,
-            "Failed",
-            retry_attempt=cint(retry_attempt if retry_attempt is not None else queue_doc.retry_count),
-        )
-    except Exception as e:
-        frappe.log_error(
-            f"Error logging terminal failure for {queue_doc.document_type} {queue_doc.document_name}: {str(e)}",
-            "FBR Queue Terminal Failure",
-        )
-
+def _remove_terminal_queue_item(queue_doc):
     if frappe.db.exists("FBR Queue", queue_doc.name):
         frappe.delete_doc("FBR Queue", queue_doc.name, ignore_permissions=True)
 
@@ -293,12 +230,7 @@ def recover_stuck_and_retryable_items():
                 doc.save(ignore_permissions=True)
                 failed_recovered += 1
             else:
-                _log_failed_and_remove_queue_item(
-                    doc,
-                    error_message=doc.error_message or "Max retries exceeded",
-                    response=_parse_queue_response(doc),
-                    retry_attempt=cint(doc.retry_count),
-                )
+                _remove_terminal_queue_item(doc)
         except Exception as e:
             frappe.log_error(
                 f"Error recovering failed FBR Queue item {item.name}: {str(e)}"
@@ -311,15 +243,10 @@ def recover_stuck_and_retryable_items():
     for item in terminal_failed_items:
         try:
             doc = frappe.get_doc("FBR Queue", item.name)
-            _log_failed_and_remove_queue_item(
-                doc,
-                error_message=doc.error_message or "Max retries exceeded",
-                response=_parse_queue_response(doc),
-                retry_attempt=cint(doc.retry_count),
-            )
+            _remove_terminal_queue_item(doc)
         except Exception as e:
             frappe.log_error(
-                f"Error moving terminal failed FBR Queue item {item.name} to logs: {str(e)}"
+                f"Error removing terminal failed FBR Queue item {item.name}: {str(e)}"
             )
 
     return {"stuck_recovered": stuck_recovered, "failed_recovered": failed_recovered}
@@ -467,7 +394,6 @@ def post_invoice_to_fbr(doctype: str, docname: str):
                 }
 
             if queue_doc.status == "Failed":
-                _clear_failed_logs_for_document(doctype, docname)
                 queue_doc.status = "Pending"
                 queue_doc.next_retry_at = now_datetime()
                 queue_doc.error_message = ""
@@ -486,7 +412,6 @@ def post_invoice_to_fbr(doctype: str, docname: str):
                 }
 
         backlog_exists = _has_status_row("Processing") or _has_status_row("Pending")
-        _clear_failed_logs_for_document(doctype, docname)
 
         queue_result = add_to_queue(
             doctype=doctype,
@@ -603,12 +528,7 @@ def _process_single_queue_item(queue_item_name):
             queue_entry.save(ignore_permissions=True)
 
         if not _has_retry_left(queue_entry):
-            _log_failed_and_remove_queue_item(
-                queue_entry,
-                error_message=queue_entry.error_message or "Max retries exceeded",
-                response=_parse_queue_response(queue_entry),
-                retry_attempt=cint(queue_entry.retry_count),
-            )
+            _remove_terminal_queue_item(queue_entry)
             return
 
         # Import locally to avoid circular dependencies
@@ -697,12 +617,7 @@ def _process_single_queue_item(queue_item_name):
                 increment_attempt=True,
             )
             if not _has_retry_left(queue_entry):
-                _log_failed_and_remove_queue_item(
-                    queue_entry,
-                    error_message=error_message,
-                    response=response,
-                    retry_attempt=cint(queue_entry.retry_count),
-                )
+                _remove_terminal_queue_item(queue_entry)
                 return
         else:
             failure_type = str(submission_result.get("failure_type") or "").strip().lower()
@@ -733,7 +648,20 @@ def _process_single_queue_item(queue_item_name):
                 }
             }
             try:
-                from fbr_e_invoicing.api.fbr_submission import _persist_fbr_response_fields
+                from fbr_e_invoicing.api.fbr_submission import (
+                    _persist_fbr_response_fields,
+                    log_fbr_submission,
+                )
+
+                retry_attempt = cint(queue_entry.retry_count) + 1
+                log_fbr_submission(
+                    queue_entry.document_type,
+                    queue_entry.document_name,
+                    {},
+                    response,
+                    "Error",
+                    retry_attempt=retry_attempt,
+                )
 
                 _persist_fbr_response_fields(
                     queue_entry.document_type,
@@ -754,12 +682,7 @@ def _process_single_queue_item(queue_item_name):
                 increment_attempt=True,
             )
             if not _has_retry_left(queue_entry):
-                _log_failed_and_remove_queue_item(
-                    queue_entry,
-                    error_message=f"Exception: {str(e)}",
-                    response=response,
-                    retry_attempt=cint(queue_entry.retry_count),
-                )
+                _remove_terminal_queue_item(queue_entry)
     finally:
         _kick_queue_once()
 
