@@ -10,11 +10,9 @@
   "document_section",
   "document_type",
   "document_name",
-  "priority",
   "column_break_kshd",
   "status",
   "retry_count",
-  "max_retries",
   "remaining_retries",
   "details_section",
   "error_message",
@@ -59,13 +57,6 @@
    "reqd": 1
   },
   {
-   "default": "5",
-   "description": "10 = Highest, 1 = Lowest",
-   "fieldname": "priority",
-   "fieldtype": "Int",
-   "label": "Priority"
-  },
-  {
    "fieldname": "column_break_kshd",
    "fieldtype": "Column Break"
   },
@@ -86,12 +77,6 @@
    "fieldtype": "Int",
    "label": "Retry Count",
    "read_only": 1
-  },
-  {
-   "default": "5",
-   "fieldname": "max_retries",
-   "fieldtype": "Int",
-   "label": "Max Retries"
   },
   {
    "default": "5",

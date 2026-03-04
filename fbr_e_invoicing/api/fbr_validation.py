@@ -1,3 +1,5 @@
+import json
+
 import frappe
 from frappe import _
 from datetime import datetime
@@ -430,6 +432,71 @@ def block_cancel_for_successfully_submitted_fbr_invoice(doc, method=None):
                 "This cannot be cancelled as it has already been successfully submitted to FBR."
             ),
             title=_("Cancellation Not Allowed"),
+        )
+
+
+def cleanup_fbr_queue_on_cancel(doc, method=None):
+    """
+    On successful cancellation, remove related retryable queue rows and log cancellation.
+
+    Only Pending/Failed queue items are eligible for cleanup; Processing is intentionally
+    left untouched.
+    """
+    try:
+        queue_rows = frappe.get_all(
+            "FBR Queue",
+            filters={
+                "document_type": doc.doctype,
+                "document_name": doc.name,
+                "status": ["in", ["Pending", "Failed"]],
+            },
+            fields=["name", "status"],
+            order_by="creation asc",
+            limit_page_length=0,
+        )
+        if not queue_rows:
+            return
+
+        deleted_rows = []
+        failed_deletions = []
+
+        for row in queue_rows:
+            try:
+                frappe.delete_doc("FBR Queue", row.name, ignore_permissions=True)
+                deleted_rows.append({"queue_id": row.name, "status": row.status})
+            except Exception as e:
+                failed_deletions.append({"queue_id": row.name, "error": str(e)})
+                frappe.log_error(
+                    f"Failed deleting FBR Queue row {row.name} during cancel of {doc.doctype} {doc.name}: {str(e)}",
+                    "FBR Cancel Queue Cleanup",
+                )
+
+        if not deleted_rows:
+            return
+
+        response_payload = {
+            "message": "Invoice cancelled before FBR submission; removed related queue items.",
+            "removed_queue_items": deleted_rows,
+            "removed_count": len(deleted_rows),
+        }
+        if failed_deletions:
+            response_payload["failed_deletions"] = failed_deletions
+
+        log_doc = frappe.new_doc("FBR Logs")
+        log_doc.update(
+            {
+                "document_type": doc.doctype,
+                "document_name": doc.name,
+                "status": "Cancelled",
+                "submitted_at": now_datetime(),
+                "response_data": json.dumps(response_payload, indent=2),
+            }
+        )
+        log_doc.insert(ignore_permissions=True)
+    except Exception as e:
+        frappe.log_error(
+            f"Error cleaning queue/logging cancellation for {doc.doctype} {doc.name}: {str(e)}",
+            "FBR Cancel Queue Cleanup",
         )
 
 

@@ -311,8 +311,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 1.5%",
-      "account_name": "Withholding Tax - 1.5%",
+      "key": "WH TAX - 1.5%",
+      "account_name": "WH TAX - 1.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -322,8 +322,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 10%",
-      "account_name": "Withholding Tax - 10%",
+      "key": "WH TAX - 10%",
+      "account_name": "WH TAX - 10%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -333,8 +333,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 11%",
-      "account_name": "Withholding Tax - 11%",
+      "key": "WH TAX - 11%",
+      "account_name": "WH TAX - 11%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -344,8 +344,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 4%",
-      "account_name": "Withholding Tax - 4%",
+      "key": "WH TAX - 4%",
+      "account_name": "WH TAX - 4%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -355,8 +355,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 5%",
-      "account_name": "Withholding Tax - 5%",
+      "key": "WH TAX - 5%",
+      "account_name": "WH TAX - 5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -366,8 +366,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 5.5%",
-      "account_name": "Withholding Tax - 5.5%",
+      "key": "WH TAX - 5.5%",
+      "account_name": "WH TAX - 5.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -377,8 +377,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 7.5%",
-      "account_name": "Withholding Tax - 7.5%",
+      "key": "WH TAX - 7.5%",
+      "account_name": "WH TAX - 7.5%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -388,8 +388,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 8%",
-      "account_name": "Withholding Tax - 8%",
+      "key": "WH TAX - 8%",
+      "account_name": "WH TAX - 8%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -399,8 +399,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 9%",
-      "account_name": "Withholding Tax - 9%",
+      "key": "WH TAX - 9%",
+      "account_name": "WH TAX - 9%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -410,8 +410,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Withholding Tax - 1%",
-      "account_name": "Withholding Tax - 1%",
+      "key": "WH TAX - 1%",
+      "account_name": "WH TAX - 1%",
       "parent_key": "Withholding Tax",
       "root_type": "Asset",
       "is_group": 0,
@@ -861,8 +861,8 @@
       "report_type": "Balance Sheet"
     },
     {
-      "key": "Khyber Pakhtunkhwa (L)",
-      "account_name": "Khyber Pakhtunkhwa",
+      "key": "Khyber Paktunkhwa (L)",
+      "account_name": "Khyber Paktunkhwa",
       "parent_key": "Other Liabilities",
       "root_type": "Liability",
       "is_group": 1,
@@ -874,7 +874,7 @@
     {
       "key": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
       "account_name": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
-      "parent_key": "Khyber Pakhtunkhwa (L)",
+      "parent_key": "Khyber Paktunkhwa (L)",
       "root_type": "Liability",
       "is_group": 0,
       "account_type": "Tax",
