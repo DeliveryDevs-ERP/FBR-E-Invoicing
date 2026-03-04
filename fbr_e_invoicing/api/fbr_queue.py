@@ -5,25 +5,14 @@ from frappe import _
 from frappe.utils import add_to_date, cint, now, now_datetime
 
 DEFAULT_MAX_RETRIES = 5
-DEFAULT_PRIORITY = 5
-MIN_PRIORITY = 1
-MAX_PRIORITY = 10
 STUCK_PROCESSING_TIMEOUT_MINUTES = 30
 VALID_QUEUE_STATUSES = {"Pending", "Processing", "Completed", "Failed"}
 SUPPORTED_DOCUMENT_TYPES = {"Sales Invoice", "POS Invoice"}
-
-
-def _get_effective_max_retries(max_retries):
-    value = cint(max_retries)
-    return value if value > 0 else DEFAULT_MAX_RETRIES
-
-
-def _normalize_priority(priority):
-    if priority is None or priority == "":
-        return DEFAULT_PRIORITY
-    value = cint(priority)
-    return max(MIN_PRIORITY, min(value, MAX_PRIORITY))
-
+NON_RETRYABLE_INVALID_FAILURE_TYPES = {
+    "payload_error",
+    "business_invalid",
+    "http_validation_error",
+}
 
 def _normalize_queue_status(status):
     normalized_status = str(status or "").strip()
@@ -31,17 +20,13 @@ def _normalize_queue_status(status):
 
 
 def _has_retry_left(queue_doc):
-    return cint(queue_doc.retry_count) < _get_effective_max_retries(queue_doc.max_retries)
+    return cint(queue_doc.retry_count) < DEFAULT_MAX_RETRIES
 
 
 def _sync_retry_fields(queue_doc):
-    effective_max_retries = _get_effective_max_retries(queue_doc.max_retries)
-    queue_doc.max_retries = effective_max_retries
     if queue_doc.meta.has_field("remaining_retries"):
-        queue_doc.remaining_retries = max(
-            0, effective_max_retries - cint(queue_doc.retry_count)
-        )
-    return effective_max_retries
+        queue_doc.remaining_retries = max(0, DEFAULT_MAX_RETRIES - cint(queue_doc.retry_count))
+    return DEFAULT_MAX_RETRIES
 
 
 def _get_next_retry_at(reference_time=None):
@@ -54,14 +39,72 @@ def _set_queue_response(queue_doc, response=None):
         queue_doc.fbr_response = json.dumps(response, indent=2)
 
 
-def _ensure_retry_capacity(queue_doc, minimum_additional_attempts=1):
-    current_max = _get_effective_max_retries(queue_doc.max_retries)
-    required_max = max(current_max, cint(queue_doc.retry_count) + minimum_additional_attempts)
-    if required_max != current_max:
-        queue_doc.max_retries = required_max
-        return True
-    queue_doc.max_retries = current_max
-    return False
+def _parse_queue_response(queue_doc):
+    raw_response = getattr(queue_doc, "fbr_response", "")
+    if not raw_response:
+        return {}
+    try:
+        parsed = json.loads(raw_response)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _clear_failed_logs_for_document(doctype, docname):
+    try:
+        failed_log_names = frappe.get_all(
+            "FBR Logs",
+            filters={
+                "document_type": doctype,
+                "document_name": docname,
+                "status": "Failed",
+            },
+            pluck="name",
+            limit_page_length=0,
+        )
+        for log_name in failed_log_names:
+            frappe.delete_doc("FBR Logs", log_name, ignore_permissions=True)
+        return len(failed_log_names)
+    except Exception as e:
+        frappe.log_error(
+            f"Error clearing failed logs for {doctype} {docname}: {str(e)}",
+            "FBR Failed Log Cleanup",
+        )
+        return 0
+
+
+def _log_failed_and_remove_queue_item(
+    queue_doc, error_message=None, response=None, retry_attempt=None
+):
+    response_payload = response if isinstance(response, dict) and response else _parse_queue_response(queue_doc)
+    message = str(error_message or queue_doc.error_message or "Max retries exceeded").strip()
+    if "validationResponse" not in response_payload:
+        response_payload["validationResponse"] = {
+            "status": "Error",
+            "error": message,
+        }
+    elif isinstance(response_payload.get("validationResponse"), dict) and not response_payload["validationResponse"].get("error"):
+        response_payload["validationResponse"]["error"] = message
+
+    try:
+        from fbr_e_invoicing.api.fbr_submission import log_fbr_submission
+
+        log_fbr_submission(
+            queue_doc.document_type,
+            queue_doc.document_name,
+            {},
+            response_payload,
+            "Failed",
+            retry_attempt=cint(retry_attempt if retry_attempt is not None else queue_doc.retry_count),
+        )
+    except Exception as e:
+        frappe.log_error(
+            f"Error logging terminal failure for {queue_doc.document_type} {queue_doc.document_name}: {str(e)}",
+            "FBR Queue Terminal Failure",
+        )
+
+    if frappe.db.exists("FBR Queue", queue_doc.name):
+        frappe.delete_doc("FBR Queue", queue_doc.name, ignore_permissions=True)
 
 
 def _mark_queue_retry_or_fail(
@@ -250,13 +293,33 @@ def recover_stuck_and_retryable_items():
                 doc.save(ignore_permissions=True)
                 failed_recovered += 1
             else:
-                if doc.next_retry_at:
-                    doc.next_retry_at = None
-                    _sync_retry_fields(doc)
-                    doc.save(ignore_permissions=True)
+                _log_failed_and_remove_queue_item(
+                    doc,
+                    error_message=doc.error_message or "Max retries exceeded",
+                    response=_parse_queue_response(doc),
+                    retry_attempt=cint(doc.retry_count),
+                )
         except Exception as e:
             frappe.log_error(
                 f"Error recovering failed FBR Queue item {item.name}: {str(e)}"
+            )
+
+    terminal_failed_items = frappe.get_all(
+        "FBR Queue",
+        filters={"status": "Failed", "retry_count": [">=", DEFAULT_MAX_RETRIES]},
+    )
+    for item in terminal_failed_items:
+        try:
+            doc = frappe.get_doc("FBR Queue", item.name)
+            _log_failed_and_remove_queue_item(
+                doc,
+                error_message=doc.error_message or "Max retries exceeded",
+                response=_parse_queue_response(doc),
+                retry_attempt=cint(doc.retry_count),
+            )
+        except Exception as e:
+            frappe.log_error(
+                f"Error moving terminal failed FBR Queue item {item.name} to logs: {str(e)}"
             )
 
     return {"stuck_recovered": stuck_recovered, "failed_recovered": failed_recovered}
@@ -268,8 +331,6 @@ def add_to_queue(
     docname: str,
     status: str = "Pending",
     error_message: str = "",
-    priority: int | str | None = None,
-    max_retries: int | str | None = None,
     force_immediate: bool = False,
     append_to_back: bool = False,
 ):
@@ -302,30 +363,13 @@ def add_to_queue(
         )
 
         normalized_status = _normalize_queue_status(status)
-        effective_priority = _normalize_priority(priority)
-        effective_max_retries = _get_effective_max_retries(max_retries)
 
         if existing_queue_id:
             queue_doc = frappe.get_doc("FBR Queue", existing_queue_id)
             changed = False
             previous_status = queue_doc.status
 
-            if (
-                priority is not None
-                and getattr(queue_doc, "priority", None) != effective_priority
-            ):
-                queue_doc.priority = effective_priority
-                changed = True
-
-            if (
-                max_retries is not None
-                and getattr(queue_doc, "max_retries", None) != effective_max_retries
-            ):
-                queue_doc.max_retries = effective_max_retries
-                changed = True
-
             if queue_doc.status == "Failed":
-                _ensure_retry_capacity(queue_doc, minimum_additional_attempts=1)
                 queue_doc.status = "Pending"
                 queue_doc.next_retry_at = now_datetime()
                 queue_doc.error_message = ""
@@ -364,8 +408,6 @@ def add_to_queue(
         queue_doc.document_type = doctype
         queue_doc.document_name = docname
         queue_doc.status = normalized_status
-        queue_doc.priority = effective_priority
-        queue_doc.max_retries = effective_max_retries
         queue_doc.error_message = error_message
         queue_doc.retry_count = 0
         queue_doc.created_at = now()
@@ -425,7 +467,7 @@ def post_invoice_to_fbr(doctype: str, docname: str):
                 }
 
             if queue_doc.status == "Failed":
-                _ensure_retry_capacity(queue_doc, minimum_additional_attempts=1)
+                _clear_failed_logs_for_document(doctype, docname)
                 queue_doc.status = "Pending"
                 queue_doc.next_retry_at = now_datetime()
                 queue_doc.error_message = ""
@@ -444,6 +486,7 @@ def post_invoice_to_fbr(doctype: str, docname: str):
                 }
 
         backlog_exists = _has_status_row("Processing") or _has_status_row("Pending")
+        _clear_failed_logs_for_document(doctype, docname)
 
         queue_result = add_to_queue(
             doctype=doctype,
@@ -502,7 +545,7 @@ def process_queue(limit: int | str = 50):
             queue_items = frappe.get_all(
                 "FBR Queue",
                 filters={"status": "Pending", "next_retry_at": ["<=", now_datetime()]},
-                order_by="priority DESC, created_at ASC",
+                order_by="created_at ASC, name ASC",
                 limit=1,
             )
             if not queue_items:
@@ -545,26 +588,26 @@ def _process_single_queue_item(queue_item_name):
         if queue_entry.status != "Processing":
             return
 
-        previous_max_retries = cint(queue_entry.max_retries)
         previous_remaining_retries = (
             cint(queue_entry.remaining_retries)
             if queue_entry.meta.has_field("remaining_retries")
             else None
         )
         _sync_retry_fields(queue_entry)
-        retry_fields_changed = cint(queue_entry.max_retries) != previous_max_retries
-        if queue_entry.meta.has_field("remaining_retries"):
-            retry_fields_changed = retry_fields_changed or (
+        retry_fields_changed = False
+        if queue_entry.meta.has_field("remaining_retries") and previous_remaining_retries is not None:
+            retry_fields_changed = (
                 cint(queue_entry.remaining_retries) != previous_remaining_retries
             )
         if retry_fields_changed:
             queue_entry.save(ignore_permissions=True)
 
         if not _has_retry_left(queue_entry):
-            _mark_queue_terminal_failure(
+            _log_failed_and_remove_queue_item(
                 queue_entry,
-                "Max retries exceeded",
-                increment_attempt=False,
+                error_message=queue_entry.error_message or "Max retries exceeded",
+                response=_parse_queue_response(queue_entry),
+                retry_attempt=cint(queue_entry.retry_count),
             )
             return
 
@@ -653,7 +696,19 @@ def _process_single_queue_item(queue_item_name):
                 retryable=True,
                 increment_attempt=True,
             )
+            if not _has_retry_left(queue_entry):
+                _log_failed_and_remove_queue_item(
+                    queue_entry,
+                    error_message=error_message,
+                    response=response,
+                    retry_attempt=cint(queue_entry.retry_count),
+                )
+                return
         else:
+            failure_type = str(submission_result.get("failure_type") or "").strip().lower()
+            if failure_type in NON_RETRYABLE_INVALID_FAILURE_TYPES:
+                frappe.delete_doc("FBR Queue", queue_item_name, ignore_permissions=True)
+                return
             _mark_queue_terminal_failure(
                 queue_entry,
                 error_message,
@@ -698,6 +753,13 @@ def _process_single_queue_item(queue_item_name):
                 retryable=True,
                 increment_attempt=True,
             )
+            if not _has_retry_left(queue_entry):
+                _log_failed_and_remove_queue_item(
+                    queue_entry,
+                    error_message=f"Exception: {str(e)}",
+                    response=response,
+                    retry_attempt=cint(queue_entry.retry_count),
+                )
     finally:
         _kick_queue_once()
 
@@ -708,7 +770,7 @@ def get_document_queue_state(doctype: str, docname: str):
     queue_row = frappe.db.get_value(
         "FBR Queue",
         {"document_type": doctype, "document_name": docname},
-        ["name", "status", "retry_count", "max_retries", "next_retry_at"],
+        ["name", "status", "retry_count", "next_retry_at"],
         as_dict=True,
     )
 
@@ -788,7 +850,6 @@ def get_queue_status():
                 "error_message",
                 "retry_count",
                 "created_at",
-                "max_retries",
                 "next_retry_at",
             ],
             order_by="modified desc",

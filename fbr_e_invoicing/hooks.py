@@ -25,18 +25,20 @@ add_to_apps_screen = [
 
 doc_events = {
     "Company": {
-        "after_insert": "fbr_e_invoicing.coa_setup.overrides.company.on_company_after_insert_setup_pakistan",
+        # Keep only on_update so ERPNext can create core chart/default accounts first.
         "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
     },
     "Sales Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
         "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
+        "on_cancel": "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
     },
     "POS Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
         "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
         "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
+        "on_cancel": "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
         "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
     },
 }
@@ -169,6 +171,7 @@ dashboard_charts = [
 # -------------------------
 
 after_install = "fbr_e_invoicing.install.after_install"
+after_sync = "fbr_e_invoicing.install.after_sync"
 after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
