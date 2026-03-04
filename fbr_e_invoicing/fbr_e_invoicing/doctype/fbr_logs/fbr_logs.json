@@ -77,7 +77,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Success\nInvalid\nError\nTimeout",
+   "options": "Success\nInvalid\nError\nTimeout\nCancelled",
    "reqd": 1
   },
   {

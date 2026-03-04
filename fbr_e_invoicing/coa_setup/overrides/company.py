@@ -241,6 +241,20 @@ def _normalize_country(value: str | None) -> str:
     return (value or "").strip().lower()
 
 
+def _core_erpnext_accounts_ready(company: str) -> bool:
+    """
+    Ensure ERPNext base CoA/defaults are in place before adding app-specific accounts.
+    This prevents custom accounts from short-circuiting Company.on_update core setup.
+    """
+    if not frappe.db.get_value("Company", company, "default_receivable_account"):
+        return False
+    if not frappe.db.get_value("Company", company, "default_payable_account"):
+        return False
+    if not frappe.db.exists("Account", {"company": company, "root_type": "Income", "is_group": 0}):
+        return False
+    return True
+
+
 def ensure_pakistan_tax_accounts(company: str) -> dict[str, Any]:
     summary = {
         "accounts_created": 0,
@@ -908,14 +922,15 @@ def on_company_update_setup_pakistan(doc, method=None):
     if not getattr(doc, "name", None):
         return
 
+    if not _core_erpnext_accounts_ready(doc.name):
+        # ERPNext core chart/default account setup has not completed yet.
+        # Skip now; hook will run on next update/save.
+        return
+
     setup_pakistan_tax_accounts_and_item_templates(doc.name, ignore_permissions=True)
 
 
 def on_company_after_insert_setup_pakistan(doc, method=None):
-    if _normalize_country(getattr(doc, "country", None)) != "pakistan":
-        return
-
-    if not getattr(doc, "name", None):
-        return
-
-    setup_pakistan_tax_accounts_and_item_templates(doc.name, ignore_permissions=True)
+    # Intentionally no-op. We rely on Company.on_update so ERPNext core accounts
+    # are created first, then app-specific Pakistan tax accounts are added.
+    return

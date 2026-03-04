@@ -82,6 +82,16 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "Account",
                 {
                     "company": self.company.name,
+                    "account_name": "Khyber Paktunkhwa",
+                    "is_group": 1,
+                },
+            )
+        )
+        self.assertTrue(
+            frappe.db.exists(
+                "Account",
+                {
+                    "company": self.company.name,
                     "account_name": "Sales Service Tax 17%",
                     "is_group": 0,
                 },
@@ -210,15 +220,12 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
               and (
                 account_name like %s
                 or account_name like %s
-                or account_name like %s
-                or account_name like %s
               )
             """,
             (
                 self.company.name,
                 "%- ND%",
                 "%- DD%",
-                "%Paktunkh%",
                 "%Paktunkwa%",
             ),
         )
