@@ -14,4 +14,8 @@ def after_install():
     populate_provinces()
     sync_hs_codes()
     sync_uoms()
+
+
+def after_sync():
+    # Run Pakistan COA/template setup after fixtures are synced, so Tax Category links exist.
     setup_pakistan_for_existing_companies(ignore_permissions=True)

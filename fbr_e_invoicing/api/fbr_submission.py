@@ -7,6 +7,7 @@ import requests
 from requests.exceptions import RequestException
 
 RETRYABLE_HTTP_STATUS_CODES = {408, 425, 429}
+NON_RETRYABLE_INVALID_HTTP_STATUS_CODES = {400, 422}
 
 
 def _normalize_text(value):
@@ -81,19 +82,20 @@ def submit_single_invoice(
     if not payload_result.get("success"):
         error_message = payload_result.get("error") or "Unable to build FBR payload"
         fallback_response = {
-            "validationResponse": {"status": "Error", "error": error_message}
+            "validationResponse": {"status": "Invalid", "error": error_message}
         }
         log_fbr_submission(
             doctype,
             docname,
             {},
             fallback_response,
-            "Error",
+            "Invalid",
             retry_attempt=retry_attempt,
             processing_time=round((perf_counter() - start_time) * 1000, 2),
         )
         return {
             "success": False,
+            "status": "invalid",
             "error": error_message,
             "retryable": False,
             "failure_type": payload_result.get("failure_type") or "payload_error",
@@ -148,20 +150,28 @@ def submit_single_invoice(
     # 5. Handle HTTP Failure
     error_message = api_result.get("error") or "FBR submission failed"
     retryable = bool(api_result.get("retryable"))
+    failure_type = api_result.get("failure_type") or "http_error"
+    is_non_retryable_invalid = not retryable and failure_type == "http_validation_error"
 
     fallback_response = response if isinstance(response, dict) else {}
-    if "validationResponse" not in fallback_response:
-        fallback_response["validationResponse"] = {
-            "status": "Error",
-            "error": error_message,
-        }
+    validation_response = (
+        fallback_response.get("validationResponse")
+        if isinstance(fallback_response.get("validationResponse"), dict)
+        else {}
+    )
+    fallback_response["validationResponse"] = validation_response
+    validation_response["status"] = (
+        "Invalid" if is_non_retryable_invalid else "Error"
+    )
+    if not validation_response.get("error"):
+        validation_response["error"] = error_message
 
     log_fbr_submission(
         doctype,
         docname,
         payload,
         fallback_response,
-        "Error",
+        "Invalid" if is_non_retryable_invalid else "Error",
         response_status_code=status_code,
         retry_attempt=retry_attempt,
         processing_time=processing_time,
@@ -170,11 +180,11 @@ def submit_single_invoice(
 
     return {
         "success": False,
-        "status": "error",
+        "status": "invalid" if is_non_retryable_invalid else "error",
         "error": error_message,
         "response": fallback_response,
         "retryable": retryable,
-        "failure_type": api_result.get("failure_type") or "http_error",
+        "failure_type": failure_type,
     }
 
 
@@ -423,6 +433,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             else (f" | Body: {text[:500]}" if text else "")
         )
 
+        failure_type = _classify_http_failure_type(resp.status_code)
         retryable = _is_retryable_http_status(resp.status_code)
         return {
             "success": False,
@@ -431,7 +442,7 @@ def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
             "data": data if isinstance(data, dict) else {"raw": text},
             "api_version": api_version,
             "retryable": retryable,
-            "failure_type": "http_error",
+            "failure_type": failure_type,
         }
 
     if not isinstance(data, dict):
@@ -520,10 +531,18 @@ def _build_payload(doctype, docname):
         return {"success": False, "error": str(e), "failure_type": "payload_error"}
 
 
+def _classify_http_failure_type(status_code):
+    if status_code in NON_RETRYABLE_INVALID_HTTP_STATUS_CODES:
+        return "http_validation_error"
+    return "http_error"
+
+
 def _is_retryable_http_status(status_code):
     if status_code is None:
         return False
-    return status_code in RETRYABLE_HTTP_STATUS_CODES or status_code >= 500
+    if status_code in NON_RETRYABLE_INVALID_HTTP_STATUS_CODES:
+        return False
+    return status_code >= 400 or status_code in RETRYABLE_HTTP_STATUS_CODES
 
 
 def _persist_fbr_response_fields(doctype, docname, response):
