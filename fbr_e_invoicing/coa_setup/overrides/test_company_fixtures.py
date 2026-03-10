@@ -175,42 +175,103 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
             )
         )
 
-        first_category = withholding_defaults["tax_withholding_categories"][0]
-        category_doc = frappe.get_doc("Tax Withholding Category", first_category["name"])
-        self.assertEqual(category_doc.category_name or "", "")
-        self.assertGreaterEqual(len(category_doc.rates), 1)
-        self.assertTrue(
-            any(
-                (row.company or "").strip() == self.company.name
-                for row in (category_doc.accounts or [])
-            )
-        )
-        expected_root_type = None
-        normalized_category_name = (first_category["name"] or "").lower()
-        if "(purchases)" in normalized_category_name:
-            expected_root_type = "Liability"
-        elif "(sales)" in normalized_category_name:
-            expected_root_type = "Asset"
-
-        account_filters = {
-            "company": self.company.name,
-            "account_name": first_category["account_name"],
-        }
-        if expected_root_type:
-            account_filters["root_type"] = expected_root_type
-        expected_account = frappe.db.get_value(
+        current_assets = frappe.db.get_value(
             "Account",
-            account_filters,
+            {
+                "company": self.company.name,
+                "account_name": "Current Assets",
+                "is_group": 1,
+                "root_type": "Asset",
+            },
             "name",
         )
-        self.assertTrue(expected_account)
-        self.assertTrue(
-            any(
-                (row.company or "").strip() == self.company.name
-                and (row.account or "").strip() == expected_account
-                for row in (category_doc.accounts or [])
-            )
+        withholding_asset_parent = frappe.db.get_value(
+            "Account",
+            {
+                "company": self.company.name,
+                "account_name": "Withholding Tax",
+                "is_group": 1,
+                "root_type": "Asset",
+            },
+            "parent_account",
         )
+        self.assertTrue(current_assets)
+        self.assertEqual(withholding_asset_parent, current_assets)
+
+        current_liabilities = frappe.db.get_value(
+            "Account",
+            {
+                "company": self.company.name,
+                "account_name": "Current Liabilities",
+                "is_group": 1,
+                "root_type": "Liability",
+            },
+            "name",
+        )
+        withholding_liability_parent = frappe.db.get_value(
+            "Account",
+            {
+                "company": self.company.name,
+                "account_name": "Withholding Tax L",
+                "is_group": 1,
+                "root_type": "Liability",
+            },
+            "parent_account",
+        )
+        self.assertTrue(current_liabilities)
+        self.assertEqual(withholding_liability_parent, current_liabilities)
+
+        categories = withholding_defaults["tax_withholding_categories"]
+        sales_category = next(
+            (
+                row
+                for row in categories
+                if "(sales)" in (row.get("name") or "").strip().lower()
+            ),
+            None,
+        )
+        purchase_category = next(
+            (
+                row
+                for row in categories
+                if "(purchases)" in (row.get("name") or "").strip().lower()
+            ),
+            None,
+        )
+        self.assertTrue(sales_category)
+        self.assertTrue(purchase_category)
+
+        def assert_withholding_category_link(category, expected_root_type):
+            category_doc = frappe.get_doc("Tax Withholding Category", category["name"])
+            self.assertEqual(category_doc.category_name or "", "")
+            self.assertGreaterEqual(len(category_doc.rates), 1)
+            self.assertTrue(
+                any(
+                    (row.company or "").strip() == self.company.name
+                    for row in (category_doc.accounts or [])
+                )
+            )
+
+            expected_account = frappe.db.get_value(
+                "Account",
+                {
+                    "company": self.company.name,
+                    "account_name": category["account_name"],
+                    "root_type": expected_root_type,
+                },
+                "name",
+            )
+            self.assertTrue(expected_account)
+            self.assertTrue(
+                any(
+                    (row.company or "").strip() == self.company.name
+                    and (row.account or "").strip() == expected_account
+                    for row in (category_doc.accounts or [])
+                )
+            )
+
+        assert_withholding_category_link(sales_category, "Asset")
+        assert_withholding_category_link(purchase_category, "Liability")
 
         account_name_rows = frappe.db.sql(
             """
