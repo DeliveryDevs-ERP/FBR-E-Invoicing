@@ -52,6 +52,7 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
                 "abbr": f"PF{suffix[:2]}",
                 "company_name": f"_Pakistan Fixture {suffix}",
                 "country": country,
+                "custom_province": "SINDH",
                 "default_currency": "PKR",
                 "domain": "Manufacturing",
                 "chart_of_accounts": "Standard",
@@ -110,6 +111,8 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         for row in province_rows:
             sales_title = f"{row['province_label']} Sales Tax {current_year}"
             purchase_title = f"{row['province_label']} Purchase Tax {current_year}"
+            expected_sales_taxes = row["sales_taxes"]
+            expected_purchase_taxes = row["purchase_taxes"]
 
             sales_name = frappe.db.get_value(
                 "Sales Taxes and Charges Template",
@@ -122,17 +125,22 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
             )
             self.assertTrue(sales_name, f"Missing sales template: {sales_title}")
             sales_doc = frappe.get_doc("Sales Taxes and Charges Template", sales_name)
-            self.assertEqual(len(sales_doc.taxes), 1)
-            expected_sales_account = frappe.db.get_value(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": row["sales_account_name"],
-                },
-                "name",
-            )
-            self.assertEqual(sales_doc.taxes[0].account_head, expected_sales_account)
-            self.assertEqual(flt(sales_doc.taxes[0].rate), flt(row["sales_rate"]))
+            self.assertEqual(len(sales_doc.taxes), len(expected_sales_taxes))
+            for tax_row, expected_tax in zip(sales_doc.taxes, expected_sales_taxes):
+                expected_sales_account = frappe.db.get_value(
+                    "Account",
+                    {
+                        "company": self.company.name,
+                        "account_name": expected_tax["account_name"],
+                    },
+                    "name",
+                )
+                self.assertEqual(tax_row.account_head, expected_sales_account)
+                self.assertEqual(flt(tax_row.rate), flt(expected_tax["rate"]))
+                self.assertEqual(
+                    (tax_row.description or "").strip(),
+                    (expected_tax["description"] or "").strip(),
+                )
 
             purchase_name = frappe.db.get_value(
                 "Purchase Taxes and Charges Template",
@@ -147,23 +155,22 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
             purchase_doc = frappe.get_doc(
                 "Purchase Taxes and Charges Template", purchase_name
             )
-            self.assertEqual(len(purchase_doc.taxes), 1)
-            expected_purchase_account = frappe.db.get_value(
-                "Account",
-                {
-                    "company": self.company.name,
-                    "account_name": row["purchase_account_name"],
-                },
-                "name",
-            )
-            self.assertEqual(
-                purchase_doc.taxes[0].account_head,
-                expected_purchase_account,
-            )
-            self.assertEqual(
-                flt(purchase_doc.taxes[0].rate),
-                flt(row["purchase_rate"]),
-            )
+            self.assertEqual(len(purchase_doc.taxes), len(expected_purchase_taxes))
+            for tax_row, expected_tax in zip(purchase_doc.taxes, expected_purchase_taxes):
+                expected_purchase_account = frappe.db.get_value(
+                    "Account",
+                    {
+                        "company": self.company.name,
+                        "account_name": expected_tax["account_name"],
+                    },
+                    "name",
+                )
+                self.assertEqual(tax_row.account_head, expected_purchase_account)
+                self.assertEqual(flt(tax_row.rate), flt(expected_tax["rate"]))
+                self.assertEqual(
+                    (tax_row.description or "").strip(),
+                    (expected_tax["description"] or "").strip(),
+                )
 
         first_group = withholding_defaults["tax_withholding_groups"][0]
         self.assertTrue(
@@ -281,6 +288,7 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
               and (
                 account_name like %s
                 or account_name like %s
+                or account_name like %s
               )
             """,
             (
@@ -314,10 +322,87 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         self.assertEqual(second["item_templates_created"], 0)
         self.assertEqual(second["sales_templates_created"], 0)
         self.assertEqual(second["purchase_templates_created"], 0)
+        self.assertEqual(second["sales_template_rows_added"], 0)
+        self.assertEqual(second["purchase_template_rows_added"], 0)
         self.assertEqual(second["withholding_groups_created"], 0)
         self.assertEqual(second["withholding_categories_created"], 0)
         self.assertEqual(second["withholding_category_accounts_linked"], 0)
         self.assertEqual(second["withholding_category_rates_added"], 0)
+        self.assertFalse(second["errors"])
+
+    def test_existing_sindh_sales_template_is_backfilled(self):
+        company = self._create_company(country="Pakistan")
+        current_year = self._current_year()
+        initial = setup_pakistan_tax_accounts_and_item_templates(company.name)
+        self.assertFalse(initial["errors"])
+
+        standard_sales_account = frappe.db.get_value(
+            "Account",
+            {
+                "company": company.name,
+                "account_name": "Standard Sales Service Tax Sindh 13%",
+            },
+            "name",
+        )
+        self.assertTrue(standard_sales_account)
+
+        sales_name = frappe.db.get_value(
+            "Sales Taxes and Charges Template",
+            {
+                "company": company.name,
+                "title": f"Sindh Sales Tax {current_year}",
+                "tax_category": "SINDH",
+            },
+            "name",
+        )
+        self.assertTrue(sales_name)
+        existing_doc = frappe.get_doc("Sales Taxes and Charges Template", sales_name)
+        existing_doc.set(
+            "taxes",
+            [
+                {
+                    "charge_type": "On Net Total",
+                    "account_head": standard_sales_account,
+                    "description": "Sindh Sales Tax",
+                    "rate": 13.0,
+                }
+            ],
+        )
+        existing_doc.save(ignore_permissions=True)
+
+        result = setup_pakistan_tax_accounts_and_item_templates(company.name)
+
+        self.assertEqual(result["sales_templates_created"], 0)
+        self.assertEqual(result["sales_template_rows_added"], 9)
+        self.assertEqual(result["purchase_template_rows_added"], 0)
+        self.assertFalse(result["errors"])
+
+        sales_doc = frappe.get_doc("Sales Taxes and Charges Template", sales_name)
+        expected_sindh_sales = next(
+            row["sales_taxes"]
+            for row in self._province_template_defaults()
+            if row["tax_category"] == "SINDH"
+        )
+        self.assertEqual(len(sales_doc.taxes), len(expected_sindh_sales))
+
+        for tax_row, expected_tax in zip(sales_doc.taxes, expected_sindh_sales):
+            expected_account = frappe.db.get_value(
+                "Account",
+                {
+                    "company": company.name,
+                    "account_name": expected_tax["account_name"],
+                },
+                "name",
+            )
+            self.assertEqual(tax_row.account_head, expected_account)
+            self.assertEqual(flt(tax_row.rate), flt(expected_tax["rate"]))
+            self.assertEqual(
+                (tax_row.description or "").strip(),
+                (expected_tax["description"] or "").strip(),
+            )
+
+        second = setup_pakistan_tax_accounts_and_item_templates(company.name)
+        self.assertEqual(second["sales_template_rows_added"], 0)
         self.assertFalse(second["errors"])
 
     def test_non_pakistan_company_update_is_ignored(self):
@@ -337,5 +422,7 @@ class TestPakistanCompanyFixtures(IntegrationTestCase):
         self.assertIn("item_templates_created", summary)
         self.assertIn("sales_templates_created", summary)
         self.assertIn("purchase_templates_created", summary)
+        self.assertIn("sales_template_rows_added", summary)
+        self.assertIn("purchase_template_rows_added", summary)
         self.assertIn("withholding_groups_created", summary)
         self.assertIn("withholding_categories_created", summary)

@@ -37,6 +37,8 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 				const itemTemplatesCreated = to_int(summary.item_templates_created);
 				const salesTemplatesCreated = to_int(summary.sales_templates_created);
 				const purchaseTemplatesCreated = to_int(summary.purchase_templates_created);
+				const salesTemplateRowsAdded = to_int(summary.sales_template_rows_added);
+				const purchaseTemplateRowsAdded = to_int(summary.purchase_template_rows_added);
 				const withholdingGroupsCreated = to_int(summary.withholding_groups_created);
 				const withholdingCategoriesCreated = to_int(summary.withholding_categories_created);
 				const withholdingCategoryAccountsLinked = to_int(summary.withholding_category_accounts_linked);
@@ -48,6 +50,8 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 					itemTemplatesCreated === 0 &&
 					salesTemplatesCreated === 0 &&
 					purchaseTemplatesCreated === 0 &&
+					salesTemplateRowsAdded === 0 &&
+					purchaseTemplateRowsAdded === 0 &&
 					withholdingGroupsCreated === 0 &&
 					withholdingCategoriesCreated === 0 &&
 					withholdingCategoryAccountsLinked === 0 &&
@@ -84,8 +88,10 @@ function render_pakistan_setup_summary(summary) {
 		`<b>${__("Item Templates Skipped")}:</b> ${to_int(summary.item_templates_skipped)}`,
 		`<b>${__("Sales Templates Created")}:</b> ${to_int(summary.sales_templates_created)}`,
 		`<b>${__("Sales Templates Skipped")}:</b> ${to_int(summary.sales_templates_skipped)}`,
+		`<b>${__("Sales Template Rows Added")}:</b> ${to_int(summary.sales_template_rows_added)}`,
 		`<b>${__("Purchase Templates Created")}:</b> ${to_int(summary.purchase_templates_created)}`,
 		`<b>${__("Purchase Templates Skipped")}:</b> ${to_int(summary.purchase_templates_skipped)}`,
+		`<b>${__("Purchase Template Rows Added")}:</b> ${to_int(summary.purchase_template_rows_added)}`,
 		`<b>${__("Withholding Groups Created")}:</b> ${to_int(summary.withholding_groups_created)}`,
 		`<b>${__("Withholding Groups Skipped")}:</b> ${to_int(summary.withholding_groups_skipped)}`,
 		`<b>${__("Withholding Categories Created")}:</b> ${to_int(summary.withholding_categories_created)}`,
