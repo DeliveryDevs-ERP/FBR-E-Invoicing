@@ -129,17 +129,16 @@ def _ensure_province_tax_charge_template(
     current_year: int,
     doctype: str,
     template_suffix: str,
-    account_name_field: str,
-    rate_field: str,
+    taxes_field: str,
     created_key: str,
     skipped_key: str,
+    rows_added_key: str,
 ):
     tax_category = (row.get("tax_category") or "").strip()
     province_label = (row.get("province_label") or "").strip()
-    account_name = (row.get(account_name_field) or "").strip()
-    expected_rate = flt(row.get(rate_field))
+    configured_taxes = row.get(taxes_field) or []
 
-    if not tax_category or not province_label or not account_name:
+    if not tax_category or not province_label or not configured_taxes:
         summary["errors"].append(
             _("Incomplete province template config for {0}").format(
                 frappe.bold(row.get("tax_category") or row.get("province_label") or "Unknown")
@@ -148,20 +147,83 @@ def _ensure_province_tax_charge_template(
         return
 
     title = _build_province_template_title(province_label, template_suffix, current_year)
+    resolved_taxes = []
 
-    if frappe.db.get_value(doctype, {"company": company, "title": title}, "name"):
-        summary[skipped_key] += 1
-        return
+    for configured_tax in configured_taxes:
+        account_name = (configured_tax.get("account_name") or "").strip()
+        description = (configured_tax.get("description") or "").strip()
+        expected_rate = flt(configured_tax.get("rate"))
 
-    account, account_error = _resolve_company_tax_account(
-        company=company,
-        account_name=account_name,
-        expected_rate=expected_rate,
-    )
-    if account_error:
-        summary["errors"].append(
-            _("{0}: {1}").format(frappe.bold(title), account_error)
+        if not account_name:
+            summary["errors"].append(
+                _("Incomplete province template tax row for {0}").format(
+                    frappe.bold(title)
+                )
+            )
+            return
+
+        account, account_error = _resolve_company_tax_account(
+            company=company,
+            account_name=account_name,
+            expected_rate=expected_rate,
         )
+        if account_error:
+            summary["errors"].append(
+                _("{0}: {1}").format(frappe.bold(title), account_error)
+            )
+            return
+
+        resolved_taxes.append(
+            {
+                "charge_type": "On Net Total",
+                "account_head": account,
+                "description": description or f"{province_label} {template_suffix}",
+                "rate": expected_rate,
+            }
+        )
+
+    existing_name = frappe.db.get_value(doctype, {"company": company, "title": title}, "name")
+    if existing_name:
+        try:
+            doc = frappe.get_doc(doctype, existing_name)
+            existing_rows = {
+                (
+                    (tax.charge_type or "").strip(),
+                    (tax.account_head or "").strip(),
+                    flt(tax.rate),
+                )
+                for tax in (doc.get("taxes") or [])
+            }
+            rows_added = 0
+
+            for tax in resolved_taxes:
+                signature = (
+                    tax["charge_type"],
+                    tax["account_head"],
+                    flt(tax["rate"]),
+                )
+                if signature in existing_rows:
+                    continue
+
+                doc.append("taxes", tax)
+                existing_rows.add(signature)
+                rows_added += 1
+
+            if not rows_added:
+                summary[skipped_key] += 1
+                return
+
+            doc.flags.ignore_permissions = True
+            doc.save(ignore_permissions=True)
+            summary[rows_added_key] += rows_added
+        except Exception:
+            summary["errors"].append(
+                _("Failed to update {0} {1}").format(doctype, title)
+            )
+            frappe.log_error(
+                frappe.get_traceback(),
+                "Pakistan Tax Setup: Province Tax Charge Template Update",
+            )
         return
 
     try:
@@ -171,14 +233,7 @@ def _ensure_province_tax_charge_template(
                 "title": title,
                 "company": company,
                 "tax_category": tax_category,
-                "taxes": [
-                    {
-                        "charge_type": "On Net Total",
-                        "account_head": account,
-                        "description": f"{province_label} {template_suffix}",
-                        "rate": expected_rate,
-                    }
-                ],
+                "taxes": resolved_taxes,
             }
         )
         doc.flags.ignore_permissions = True
@@ -436,8 +491,10 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
     summary = {
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
+        "sales_template_rows_added": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
+        "purchase_template_rows_added": 0,
         "tax_categories_created": 0,
         "tax_categories_skipped": 0,
         "errors": [],
@@ -490,10 +547,10 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
             current_year=current_year,
             doctype="Sales Taxes and Charges Template",
             template_suffix="Sales Tax",
-            account_name_field="sales_account_name",
-            rate_field="sales_rate",
+            taxes_field="sales_taxes",
             created_key="sales_templates_created",
             skipped_key="sales_templates_skipped",
+            rows_added_key="sales_template_rows_added",
         )
         _ensure_province_tax_charge_template(
             company=company,
@@ -502,10 +559,10 @@ def ensure_pakistan_province_tax_charge_templates(company: str) -> dict[str, Any
             current_year=current_year,
             doctype="Purchase Taxes and Charges Template",
             template_suffix="Purchase Tax",
-            account_name_field="purchase_account_name",
-            rate_field="purchase_rate",
+            taxes_field="purchase_taxes",
             created_key="purchase_templates_created",
             skipped_key="purchase_templates_skipped",
+            rows_added_key="purchase_template_rows_added",
         )
 
     return summary
@@ -775,8 +832,10 @@ def setup_pakistan_tax_accounts_and_item_templates(
         "item_templates_skipped": 0,
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
+        "sales_template_rows_added": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
+        "purchase_template_rows_added": 0,
         "withholding_groups_created": 0,
         "withholding_groups_skipped": 0,
         "withholding_categories_created": 0,
@@ -801,11 +860,17 @@ def setup_pakistan_tax_accounts_and_item_templates(
     result["item_templates_skipped"] = template_summary["item_templates_skipped"]
     result["sales_templates_created"] = province_template_summary["sales_templates_created"]
     result["sales_templates_skipped"] = province_template_summary["sales_templates_skipped"]
+    result["sales_template_rows_added"] = province_template_summary[
+        "sales_template_rows_added"
+    ]
     result["purchase_templates_created"] = province_template_summary[
         "purchase_templates_created"
     ]
     result["purchase_templates_skipped"] = province_template_summary[
         "purchase_templates_skipped"
+    ]
+    result["purchase_template_rows_added"] = province_template_summary[
+        "purchase_template_rows_added"
     ]
     result["withholding_groups_created"] = withholding_summary[
         "withholding_groups_created"
@@ -862,8 +927,10 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
         "item_templates_skipped": 0,
         "sales_templates_created": 0,
         "sales_templates_skipped": 0,
+        "sales_template_rows_added": 0,
         "purchase_templates_created": 0,
         "purchase_templates_skipped": 0,
+        "purchase_template_rows_added": 0,
         "withholding_groups_created": 0,
         "withholding_groups_skipped": 0,
         "withholding_categories_created": 0,
@@ -886,8 +953,14 @@ def setup_pakistan_for_existing_companies(ignore_permissions: bool = False) -> d
         summary["item_templates_skipped"] += company_result["item_templates_skipped"]
         summary["sales_templates_created"] += company_result["sales_templates_created"]
         summary["sales_templates_skipped"] += company_result["sales_templates_skipped"]
+        summary["sales_template_rows_added"] += company_result[
+            "sales_template_rows_added"
+        ]
         summary["purchase_templates_created"] += company_result["purchase_templates_created"]
         summary["purchase_templates_skipped"] += company_result["purchase_templates_skipped"]
+        summary["purchase_template_rows_added"] += company_result[
+            "purchase_template_rows_added"
+        ]
         summary["withholding_groups_created"] += company_result[
             "withholding_groups_created"
         ]
