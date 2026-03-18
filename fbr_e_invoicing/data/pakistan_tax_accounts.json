@@ -302,7 +302,7 @@
     {
       "key": "Withholding Tax",
       "account_name": "Withholding Tax",
-      "parent_key": "Other Receivable",
+      "parent_key": "Current Assets",
       "root_type": "Asset",
       "is_group": 1,
       "account_type": null,
@@ -544,7 +544,7 @@
     {
       "key": "Withholding Tax L",
       "account_name": "Withholding Tax L",
-      "parent_key": "Other Liabilities",
+      "parent_key": "Current Liabilities",
       "root_type": "Liability",
       "is_group": 1,
       "account_type": null,
