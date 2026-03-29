@@ -63,23 +63,21 @@ def build_fbr_payload(sales_invoice_name: str):
     """
     doc = frappe.get_doc("Sales Invoice", sales_invoice_name)
     invoice_type = "Debit Note" if getattr(doc, "is_debit_note", 0) else "Sale Invoice"
-    return _build_invoice_payload(doc, invoice_type)
+    return _build_invoice_payload(doc, invoice_type, _get_sales_party_fields(doc))
 
 
 @frappe.whitelist()
 def build_pos_fbr_payload(pos_invoice_name: str):
     """
-    Build FBR payload for a POS Invoice using the same schema/mapping style as Sales Invoice.
-    Invoice type is intentionally fixed to Sale Invoice for POS flow.
+    Build FBR payload for a POS Invoice using POS-specific party mapping
+    and the shared item payload mapping.
     """
     doc = frappe.get_doc("POS Invoice", pos_invoice_name)
-    return _build_invoice_payload(doc, "Sale Invoice")
+    return _build_invoice_payload(doc, "Sale Invoice", _get_pos_party_fields(doc))
 
 
-def _build_invoice_payload(doc, invoice_type: str):
-    """Shared payload builder used by Sales Invoice and POS Invoice flows."""
-
-    # --- Party helpers ---
+def _get_sales_party_fields(doc):
+    """Resolve invoice-level party fields for Sales Invoice."""
     customer_tax_data = {}
     if doc.customer:
         customer_tax_data = (
@@ -98,16 +96,60 @@ def _build_invoice_payload(doc, invoice_type: str):
     if not buyer_tax_id and customer_tax_data.get("ntn"):
         buyer_tax_id = customer_tax_data.get("ntn")
 
-    buyer_name = customer_tax_data.get("customer_name") or doc.customer_name
-    buyer_province = doc.tax_category
-    buyer_address = _get_party_address_text("Customer", doc.customer)
     seller_tax_id = (
         frappe.db.get_value("Company", doc.company, "tax_id") if doc.company else None
     )
-    seller_name = doc.company
-    seller_province = doc.custom_province
-    seller_address = _get_party_address_text("Company", doc.company)
-    buyer_registration_type = "Registered" if buyer_tax_id else "Unregistered"
+    return {
+        "sellerNTNCNIC": (seller_tax_id or ""),
+        "sellerBusinessName": (doc.company or ""),
+        "sellerProvince": (doc.custom_province or ""),
+        "sellerAddress": (_get_party_address_text("Company", doc.company) or ""),
+        "buyerNTNCNIC": (buyer_tax_id or ""),
+        "buyerBusinessName": (customer_tax_data.get("customer_name") or doc.customer_name or ""),
+        "buyerProvince": (doc.tax_category or ""),
+        "buyerAddress": (_get_party_address_text("Customer", doc.customer) or ""),
+        "buyerRegistrationType": "Registered" if buyer_tax_id else "Unregistered",
+    }
+
+
+def _get_pos_party_fields(doc):
+    """Resolve invoice-level party fields for POS Invoice."""
+    seller_tax_id = (
+        frappe.db.get_value("Customer", doc.customer, "tax_id") if doc.customer else None
+    )
+    seller_name = (
+        frappe.db.get_value("Customer", doc.customer, "customer_name")
+        if doc.customer
+        else None
+    )
+    buyer_name = (
+        frappe.db.get_value("POS Profile", doc.pos_profile, "company")
+        if doc.pos_profile
+        else None
+    )
+    buyer_tax_id = (
+        frappe.db.get_value("Company", buyer_name, "tax_id") if buyer_name else None
+    )
+    buyer_province = (
+        frappe.db.get_value("Company", buyer_name, "custom_province")
+        if buyer_name
+        else None
+    )
+    return {
+        "sellerNTNCNIC": (seller_tax_id or ""),
+        "sellerBusinessName": (seller_name or ""),
+        "sellerProvince": (doc.tax_category or ""),
+        "sellerAddress": (_get_party_address_text("Customer", doc.customer) or ""),
+        "buyerNTNCNIC": (buyer_tax_id or ""),
+        "buyerBusinessName": (buyer_name or ""),
+        "buyerProvince": (buyer_province or ""),
+        "buyerAddress": (_get_party_address_text("Company", buyer_name) or ""),
+        "buyerRegistrationType": "Registered" if buyer_tax_id else "Unregistered",
+    }
+
+
+def _build_invoice_payload(doc, invoice_type: str, party_fields: dict):
+    """Shared payload builder used by Sales Invoice and POS Invoice flows."""
     first_sale_type = doc.items[0].custom_sale_type if doc.items else ""
     fbr_mode = _resolve_fbr_mode_or_throw()
 
@@ -115,15 +157,7 @@ def _build_invoice_payload(doc, invoice_type: str):
     payload = {
         "invoiceType": invoice_type,
         "invoiceDate": formatdate(doc.posting_date, "yyyy-mm-dd"),
-        "sellerNTNCNIC": (seller_tax_id or ""),
-        "sellerBusinessName": (seller_name or ""),
-        "sellerProvince": (seller_province or ""),
-        "sellerAddress": (seller_address or ""),
-        "buyerNTNCNIC": (buyer_tax_id or ""),
-        "buyerBusinessName": (buyer_name or ""),
-        "buyerProvince": (buyer_province or ""),
-        "buyerAddress": (buyer_address or ""),
-        "buyerRegistrationType": buyer_registration_type,
+        **party_fields,
         "invoiceRefNo": "",
         "items": [],
     }
