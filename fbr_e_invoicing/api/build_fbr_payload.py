@@ -55,6 +55,30 @@ def normalise_cnic(value: str | None) -> str:
     return re.sub(r"\D", "", str(value)).strip()
 
 
+def _get_customer_tax_data(customer_name: str | None) -> dict:
+    if not customer_name:
+        return {}
+
+    return (
+        frappe.db.get_value(
+            "Customer",
+            customer_name,
+            ["tax_id", "nic", "ntn", "customer_name"],
+            as_dict=True,
+        )
+        or {}
+    )
+
+
+def _resolve_customer_tax_id(customer_tax_data: dict) -> str:
+    buyer_tax_id = customer_tax_data.get("tax_id")
+    if not buyer_tax_id and customer_tax_data.get("nic"):
+        buyer_tax_id = normalise_cnic(customer_tax_data.get("nic"))
+    if not buyer_tax_id and customer_tax_data.get("ntn"):
+        buyer_tax_id = customer_tax_data.get("ntn")
+    return buyer_tax_id or ""
+
+
 @frappe.whitelist()
 def build_fbr_payload(sales_invoice_name: str):
     """
@@ -78,23 +102,8 @@ def build_pos_fbr_payload(pos_invoice_name: str):
 
 def _get_sales_party_fields(doc):
     """Resolve invoice-level party fields for Sales Invoice."""
-    customer_tax_data = {}
-    if doc.customer:
-        customer_tax_data = (
-            frappe.db.get_value(
-                "Customer",
-                doc.customer,
-                ["tax_id", "nic", "ntn", "customer_name"],
-                as_dict=True,
-            )
-            or {}
-        )
-
-    buyer_tax_id = customer_tax_data.get("tax_id")
-    if not buyer_tax_id and customer_tax_data.get("nic"):
-        buyer_tax_id = normalise_cnic(customer_tax_data.get("nic"))
-    if not buyer_tax_id and customer_tax_data.get("ntn"):
-        buyer_tax_id = customer_tax_data.get("ntn")
+    customer_tax_data = _get_customer_tax_data(doc.customer)
+    buyer_tax_id = _resolve_customer_tax_id(customer_tax_data)
 
     seller_tax_id = (
         frappe.db.get_value("Company", doc.company, "tax_id") if doc.company else None
@@ -114,36 +123,30 @@ def _get_sales_party_fields(doc):
 
 def _get_pos_party_fields(doc):
     """Resolve invoice-level party fields for POS Invoice."""
-    seller_tax_id = (
-        frappe.db.get_value("Customer", doc.customer, "tax_id") if doc.customer else None
-    )
     seller_name = (
-        frappe.db.get_value("Customer", doc.customer, "customer_name")
-        if doc.customer
-        else None
-    )
-    buyer_name = (
         frappe.db.get_value("POS Profile", doc.pos_profile, "company")
         if doc.pos_profile
         else None
     )
-    buyer_tax_id = (
-        frappe.db.get_value("Company", buyer_name, "tax_id") if buyer_name else None
+    seller_tax_id = (
+        frappe.db.get_value("Company", seller_name, "tax_id") if seller_name else None
     )
-    buyer_province = (
-        frappe.db.get_value("Company", buyer_name, "custom_province")
-        if buyer_name
+    seller_province = (
+        frappe.db.get_value("Company", seller_name, "custom_province")
+        if seller_name
         else None
     )
+    customer_tax_data = _get_customer_tax_data(doc.customer)
+    buyer_tax_id = _resolve_customer_tax_id(customer_tax_data)
     return {
         "sellerNTNCNIC": (seller_tax_id or ""),
         "sellerBusinessName": (seller_name or ""),
-        "sellerProvince": (doc.tax_category or ""),
-        "sellerAddress": (_get_party_address_text("Customer", doc.customer) or ""),
+        "sellerProvince": (seller_province or ""),
+        "sellerAddress": (_get_party_address_text("Company", seller_name) or ""),
         "buyerNTNCNIC": (buyer_tax_id or ""),
-        "buyerBusinessName": (buyer_name or ""),
-        "buyerProvince": (buyer_province or ""),
-        "buyerAddress": (_get_party_address_text("Company", buyer_name) or ""),
+        "buyerBusinessName": (customer_tax_data.get("customer_name") or doc.customer_name or ""),
+        "buyerProvince": (doc.tax_category or ""),
+        "buyerAddress": (_get_party_address_text("Customer", doc.customer) or ""),
         "buyerRegistrationType": "Registered" if buyer_tax_id else "Unregistered",
     }
 
