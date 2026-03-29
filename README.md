@@ -10,6 +10,20 @@ This app currently covers:
 - FBR print formats
 - provincial sales tax reports
 
+## Features
+
+- FBR digital invoicing support for both Sales Invoice and POS Invoice
+- `FBR E-Inv Setup` with sandbox and production modes
+- payload preview from invoice forms through `Show FBR Payload`
+- direct invoice submission through `Post to FBR`
+- bulk Sales Invoice submission from list view through `Submit to FBR`
+- POS auto-submission on submit
+- queue-based background processing with `FBR Queue` and `FBR Logs`
+- Pakistan tax-account, item tax-template, province tax-template, and withholding setup helpers
+- provincial sales tax reports
+- FBR Sales Invoice and FBR POS Invoice print formats
+- Pak Compliance workspace with setup, masters, queue, logs, and report access
+
 ## Compatibility
 
 Use the branch that matches your Frappe / ERPNext major version.
@@ -54,7 +68,7 @@ These masters are populated automatically:
 - provinces
 - FBR sale types
 
-HS Codes and UOMs are **not** reliably fetched on a fresh install, even though the install hooks call that sync code. The sync requires a valid PRAL authorization token, and that token is normally empty until you configure `FBR E-Inv Setup`. Treat HS Code and UOM fetching as a manual post-setup step through `Fetch Master Data`.
+HS Codes and UOMs are **not** fetched on a fresh install. The sync requires a valid PRAL authorization token, and that token is normally empty until you configure `FBR E-Inv Setup`. Treat HS Code and UOM fetching as a manual post-setup step through `Fetch Master Data`.
 
 ## First-Time Setup
 
@@ -164,18 +178,16 @@ The app ships these print formats:
 
 ## Future Work
 
-The items below were described in earlier README content but are **not implemented today**. They belong in future work, not current feature documentation.
-
 - a dedicated operational dashboard with a route/UI, real-time stats, queue counts, and recent activity
-- manual queue controls in the UI such as `Process Queue Now`, `Retry Failed`, or `Reset Stuck Items`
 - richer retry-policy controls such as priority-based processing, configurable retry limits, and backoff strategy controls
-- broader compliance and analytics reporting beyond the currently shipped provincial sales tax reports
 - user-facing alerts and notification workflows
-- documented admin-maintenance and health-check surfaces
-- richer queue-administration UX for bulk retry, queue recovery, and support tooling
 
 ## Technical Notes
 
 - GitHub repository: `https://github.com/DeliveryDevs-ERP/Pakistan-Compliance`
 - user-facing name: `Pak Compliance`
 - technical install name: `fbr_e_invoicing`
+
+## License
+
+This project is licensed under the MIT License. See [license.txt](license.txt).
