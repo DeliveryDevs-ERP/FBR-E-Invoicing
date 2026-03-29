@@ -1,0 +1,445 @@
+{
+  "country": "Pakistan",
+  "description": "Tax Withholding Group and Category defaults derived from Tax Withholding Group.xlsx and Tax Withholding Category.xlsx.",
+  "tax_withholding_groups": [
+    "Withholding Tax - 6% (Purchases)",
+    "Withholding Tax - 7.5% (Purchases)",
+    "Withholding Tax - 8% (Purchases)",
+    "Withholding Tax - 9% (Purchases)",
+    "WH TAX - 1.5% (Sales)",
+    "WH TAX - 10% (Sales)",
+    "WH TAX - 11% (Sales)",
+    "WH TAX - 4% (Sales)",
+    "WH TAX - 5% (Sales)",
+    "WH TAX - 5.5% (Sales)",
+    "WH TAX - 7.5% (Sales)",
+    "WH TAX - 8% (Sales)",
+    "WH TAX - 9% (Sales)",
+    "Withholding Tax - 1% (Purchases)",
+    "Withholding Tax - 1.5% (Purchases)",
+    "Withholding Tax - 10% (Purchases)",
+    "Withholding Tax - 11% (Purchases)",
+    "Withholding Tax - 2% (Purchases)",
+    "Withholding Tax - 3.5% (Purchases)",
+    "Withholding Tax - 4% (Purchases)",
+    "Withholding Tax - 5% (Purchases)",
+    "Withholding Tax - 5.5% (Purchases)",
+    "WH TAX - 1% (Sales)"
+  ],
+  "tax_withholding_categories": [
+    {
+      "name": "WH TAX - 1% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 1% (Sales)",
+        "tax_withholding_rate": 1.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 1%"
+    },
+    {
+      "name": "Withholding Tax - 5.5% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 5.5% (Purchases)",
+        "tax_withholding_rate": 5.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 5.5%"
+    },
+    {
+      "name": "Withholding Tax - 5% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 5% (Purchases)",
+        "tax_withholding_rate": 5.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 5%"
+    },
+    {
+      "name": "Withholding Tax - 4% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 4% (Purchases)",
+        "tax_withholding_rate": 4.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 4%"
+    },
+    {
+      "name": "Withholding Tax - 3.5% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 3.5% (Purchases)",
+        "tax_withholding_rate": 3.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 3.5%"
+    },
+    {
+      "name": "Withholding Tax - 2% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 2% (Purchases)",
+        "tax_withholding_rate": 2.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 2%"
+    },
+    {
+      "name": "Withholding Tax - 11% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 11% (Purchases)",
+        "tax_withholding_rate": 11.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 11%"
+    },
+    {
+      "name": "Withholding Tax - 10% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 10% (Purchases)",
+        "tax_withholding_rate": 10.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 10%"
+    },
+    {
+      "name": "Withholding Tax - 1.5% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 1.5% (Purchases)",
+        "tax_withholding_rate": 1.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 1.5%"
+    },
+    {
+      "name": "Withholding Tax - 1% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 1% (Purchases)",
+        "tax_withholding_rate": 1.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 1%"
+    },
+    {
+      "name": "WH TAX - 9% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 9% (Sales)",
+        "tax_withholding_rate": 9.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 9%"
+    },
+    {
+      "name": "WH TAX - 8% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 8% (Sales)",
+        "tax_withholding_rate": 8.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 8%"
+    },
+    {
+      "name": "WH TAX - 7.5% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 7.5% (Sales)",
+        "tax_withholding_rate": 7.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 7.5%"
+    },
+    {
+      "name": "WH TAX - 5.5% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 5.5% (Sales)",
+        "tax_withholding_rate": 5.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 5.5%"
+    },
+    {
+      "name": "WH TAX - 5% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 5% (Sales)",
+        "tax_withholding_rate": 5.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 5%"
+    },
+    {
+      "name": "WH TAX - 4% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 4% (Sales)",
+        "tax_withholding_rate": 4.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 4%"
+    },
+    {
+      "name": "WH TAX - 11% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 11% (Sales)",
+        "tax_withholding_rate": 11.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 11%"
+    },
+    {
+      "name": "WH TAX - 10% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 10% (Sales)",
+        "tax_withholding_rate": 10.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 10%"
+    },
+    {
+      "name": "WH TAX - 1.5% (Sales)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "WH TAX - 1.5% (Sales)",
+        "tax_withholding_rate": 1.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "WH TAX - 1.5%"
+    },
+    {
+      "name": "Withholding Tax - 9% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 9% (Purchases)",
+        "tax_withholding_rate": 9.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 9%"
+    },
+    {
+      "name": "Withholding Tax - 8% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 8% (Purchases)",
+        "tax_withholding_rate": 8.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 8%"
+    },
+    {
+      "name": "Withholding Tax - 7.5% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 7.5% (Purchases)",
+        "tax_withholding_rate": 7.5,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 7.5%"
+    },
+    {
+      "name": "Withholding Tax - 6% (Purchases)",
+      "category_name": "",
+      "tax_deduction_basis": "Net Total",
+      "round_off_tax_amount": 0,
+      "tax_on_excess_amount": 0,
+      "disable_cumulative_threshold": 0,
+      "disable_transaction_threshold": 0,
+      "rate": {
+        "from_date": "2025-07-01",
+        "to_date": "2026-06-30",
+        "tax_withholding_group": "Withholding Tax - 6% (Purchases)",
+        "tax_withholding_rate": 6.0,
+        "cumulative_threshold": 0.0,
+        "single_threshold": 0.0
+      },
+      "account_name": "Withholding Tax - 6%"
+    }
+  ]
+}

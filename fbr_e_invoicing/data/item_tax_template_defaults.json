@@ -1,0 +1,234 @@
+{
+  "country": "Pakistan",
+  "description": "Pakistan item tax templates derived from Item Tax Template.xlsx.",
+  "item_tax_templates": [
+    {
+      "title": "Standard Sales Service Tax Sindh 13%",
+      "account_name": "Standard Sales Service Tax Sindh 13%",
+      "tax_rate": 13.0,
+      "tax_category": "SINDH"
+    },
+    {
+      "title": "Standard Sales Service Tax Balochistan 15%",
+      "account_name": "Standard Sales Service Tax Balochistan 15%",
+      "tax_rate": 15.0,
+      "tax_category": "BALOCHISTAN"
+    },
+    {
+      "title": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
+      "account_name": "Standard Sales Service Tax Khyber Pakhtunkhwa 15%",
+      "tax_rate": 15.0,
+      "tax_category": "KYBER PAKHTUNKHWA"
+    },
+    {
+      "title": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
+      "account_name": "Standard Sales Service Tax Azad Jammu and Kashmir 16%",
+      "tax_rate": 16.0,
+      "tax_category": "AZAD JAMMU AND KASHMIR"
+    },
+    {
+      "title": "Standard Sales Service Tax Islamabad Capital Territory 16%",
+      "account_name": "Standard Sales Service Tax Islamabad Capital Territory 16%",
+      "tax_rate": 16.0,
+      "tax_category": "CAPITAL TERRITORY"
+    },
+    {
+      "title": "Standard Sales Service Tax Punjab 16%",
+      "account_name": "Standard Sales Service Tax Punjab 16%",
+      "tax_rate": 16.0,
+      "tax_category": "PUNJAB"
+    },
+    {
+      "title": "Sales Tax Telecommunication Services 19.5%",
+      "account_name": "Sales Tax Telecommunication Services 19.5%",
+      "tax_rate": 19.5,
+      "tax_category": null
+    },
+    {
+      "title": "Standard Sales Tax 17%",
+      "account_name": "Standard Sales Tax 17%",
+      "tax_rate": 17.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 0% Sindh",
+      "account_name": "Sales Service Tax 0%",
+      "tax_rate": 0.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 1% Sindh",
+      "account_name": "Sales Service Tax 1%",
+      "tax_rate": 1.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 2% Sindh",
+      "account_name": "Sales Service Tax 2%",
+      "tax_rate": 2.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 3% Sindh",
+      "account_name": "Sales Service Tax 3%",
+      "tax_rate": 3.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 5% Sindh",
+      "account_name": "Sales Service Tax 5%",
+      "tax_rate": 5.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 8% Sindh",
+      "account_name": "Sales Service Tax 8%",
+      "tax_rate": 8.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 10% Sindh",
+      "account_name": "Sales Service Tax 10%",
+      "tax_rate": 10.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 13% Sindh",
+      "account_name": "Sales Service Tax 13%",
+      "tax_rate": 13.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 15% Sindh",
+      "account_name": "Sales Service Tax 15%",
+      "tax_rate": 15.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 16% Sindh",
+      "account_name": "Sales Service Tax 16%",
+      "tax_rate": 16.0,
+      "tax_category": null
+    },
+    {
+      "title": "Sales Service Tax 17% Sindh",
+      "account_name": "Sales Service Tax 17%",
+      "tax_rate": 17.0,
+      "tax_category": null
+    },
+    {
+      "title": "Standard Purchases Service Tax Azad Jammu and Kashmir 16%",
+      "account_name": "Standard Purchases Service Tax Azad Jammu and Kashmir 16%",
+      "tax_rate": 16.0,
+      "tax_category": "AZAD JAMMU AND KASHMIR"
+    },
+    {
+      "title": "Standard Purchases Service Tax Balochistan 15%",
+      "account_name": "Standard Purchases Service Tax Balochistan 15%",
+      "tax_rate": 15.0,
+      "tax_category": "BALOCHISTAN"
+    },
+    {
+      "title": "Standard Purchases Tax 17%",
+      "account_name": "Standard Purchases Tax 17%",
+      "tax_rate": 17.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Tax Telecommunication Services 19.5%",
+      "account_name": "Purchases Tax Telecommunication Services 19.5%",
+      "tax_rate": 19.5,
+      "tax_category": null
+    },
+    {
+      "title": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
+      "account_name": "Standard Purchases Service Tax Islamabad Capital Territory 16%",
+      "tax_rate": 16.0,
+      "tax_category": "CAPITAL TERRITORY"
+    },
+    {
+      "title": "Standard Purchases Service Tax Khyber Pakhtunkhwa 15%",
+      "account_name": "Standard Purchases Service Tax Khyber Pakhtunkhwa 15%",
+      "tax_rate": 15.0,
+      "tax_category": "KYBER PAKHTUNKHWA"
+    },
+    {
+      "title": "Standard Purchases Service Tax Punjab 16%",
+      "account_name": "Standard Purchases Service Tax Punjab 16%",
+      "tax_rate": 16.0,
+      "tax_category": "PUNJAB"
+    },
+    {
+      "title": "Purchases Service Tax 0% Sindh",
+      "account_name": "Purchases Service Tax 0%",
+      "tax_rate": 0.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 1% Sindh",
+      "account_name": "Purchases Service Tax 1%",
+      "tax_rate": 1.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 2% Sindh",
+      "account_name": "Purchases Service Tax 2%",
+      "tax_rate": 2.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 3% Sindh",
+      "account_name": "Purchases Service Tax 3%",
+      "tax_rate": 3.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 5% Sindh",
+      "account_name": "Purchases Service Tax 5%",
+      "tax_rate": 5.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 8% Sindh",
+      "account_name": "Purchases Service Tax 8%",
+      "tax_rate": 8.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 10% Sindh",
+      "account_name": "Purchases Service Tax 10%",
+      "tax_rate": 10.0,
+      "tax_category": null
+    },
+    {
+      "title": "Standard Purchases Service Tax Sindh 13%",
+      "account_name": "Standard Purchases Service Tax Sindh 13%",
+      "tax_rate": 13.0,
+      "tax_category": "SINDH"
+    },
+    {
+      "title": "Purchases Service Tax 13% Sindh",
+      "account_name": "Purchases Service Tax 13%",
+      "tax_rate": 13.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 15% Sindh",
+      "account_name": "Purchases Service Tax 15%",
+      "tax_rate": 15.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 16% Sindh",
+      "account_name": "Purchases Service Tax 16%",
+      "tax_rate": 16.0,
+      "tax_category": null
+    },
+    {
+      "title": "Purchases Service Tax 17% Sindh",
+      "account_name": "Purchases Service Tax 17%",
+      "tax_rate": 17.0,
+      "tax_category": null
+    }
+  ]
+}
