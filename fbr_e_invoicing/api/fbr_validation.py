@@ -162,27 +162,27 @@ def validate_pos_invoice_fbr(doc, errors):
     if not doc.pos_profile:
         errors.append(_("POS Profile is required"))
 
-    buyer_company = ""
+    seller_company = ""
     if doc.pos_profile:
         pos_profile = frappe.get_doc("POS Profile", doc.pos_profile)
         if not pos_profile.company:
             errors.append(_("POS Profile must have a company assigned"))
         else:
-            buyer_company = pos_profile.company
+            seller_company = pos_profile.company
 
     if not doc.tax_category:
-        errors.append(_("Tax Category (Seller Province) is required for FBR submission"))
+        errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
 
-    if buyer_company:
-        buyer_company_province = frappe.db.get_value(
-            "Company", buyer_company, "custom_province"
+    if seller_company:
+        seller_company_province = frappe.db.get_value(
+            "Company", seller_company, "custom_province"
         )
-        if not buyer_company_province:
-            errors.append(_("Buyer Company Province is required for FBR submission"))
+        if not seller_company_province:
+            errors.append(_("Seller Company Province is required for FBR submission"))
 
-        buyer_company_tax_id = frappe.db.get_value("Company", buyer_company, "tax_id")
-        if not buyer_company_tax_id:
-            errors.append(_("Buyer Company Tax ID is required for FBR submission"))
+        seller_company_tax_id = frappe.db.get_value("Company", seller_company, "tax_id")
+        if not seller_company_tax_id:
+            errors.append(_("Seller Company Tax ID is required for FBR submission"))
 
     if not doc.items:
         errors.append(_("At least one item is required for FBR submission"))
