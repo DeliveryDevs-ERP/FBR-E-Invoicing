@@ -153,6 +153,9 @@ def validate_fbr_document(doctype: str, docname: str):
 
 def validate_pos_invoice_fbr(doc, errors):
     """Validate POS Invoice for FBR submission"""
+    fbr_settings = frappe.get_single("FBR E-Inv Setup")
+    if not fbr_settings.api_endpoint:
+        errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
     _append_mode_validation_error(errors)
 
     # POS Invoice specific validations
@@ -170,16 +173,13 @@ def validate_pos_invoice_fbr(doc, errors):
         else:
             seller_company = pos_profile.company
 
+    if not doc.custom_province:
+        errors.append(_("Seller Province is required for FBR submission"))
+
     if not doc.tax_category:
         errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
 
     if seller_company:
-        seller_company_province = frappe.db.get_value(
-            "Company", seller_company, "custom_province"
-        )
-        if not seller_company_province:
-            errors.append(_("Seller Company Province is required for FBR submission"))
-
         seller_company_tax_id = frappe.db.get_value("Company", seller_company, "tax_id")
         if not seller_company_tax_id:
             errors.append(_("Seller Company Tax ID is required for FBR submission"))
