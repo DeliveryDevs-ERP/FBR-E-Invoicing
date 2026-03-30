@@ -131,17 +131,12 @@ def _get_pos_party_fields(doc):
     seller_tax_id = (
         frappe.db.get_value("Company", seller_name, "tax_id") if seller_name else None
     )
-    seller_province = (
-        frappe.db.get_value("Company", seller_name, "custom_province")
-        if seller_name
-        else None
-    )
     customer_tax_data = _get_customer_tax_data(doc.customer)
     buyer_tax_id = _resolve_customer_tax_id(customer_tax_data)
     return {
         "sellerNTNCNIC": (seller_tax_id or ""),
         "sellerBusinessName": (seller_name or ""),
-        "sellerProvince": (seller_province or ""),
+        "sellerProvince": (doc.custom_province or ""),
         "sellerAddress": (_get_party_address_text("Company", seller_name) or ""),
         "buyerNTNCNIC": (buyer_tax_id or ""),
         "buyerBusinessName": (customer_tax_data.get("customer_name") or doc.customer_name or ""),
