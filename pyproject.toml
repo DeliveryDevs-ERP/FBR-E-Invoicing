@@ -4,7 +4,7 @@ authors = [
     { name = "osama.ahmed@deliverydevs.com", email = "osama.ahmed@deliverydevs.com"}
 ]
 description = "FBR Digital invoicing integration"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
