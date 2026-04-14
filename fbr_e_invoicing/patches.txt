@@ -7,5 +7,3 @@
 
 fbr_e_invoicing.patches.v1_0.populate_hs_codes
 fbr_e_invoicing.patches.v1_2.align_pos_custom_fields
-fbr_e_invoicing.patches.v1_3.setup_pakistan_tax_accounts_and_item_templates
-fbr_e_invoicing.patches.v1_4.normalize_legacy_queue_and_runtime_fields
