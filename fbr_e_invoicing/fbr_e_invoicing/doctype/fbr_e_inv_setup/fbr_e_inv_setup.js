@@ -1,14 +1,3 @@
-/* legacy v15 code
-// Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
-// For license information, please see license.txt
-
-// frappe.ui.form.on("FBR E-Inv Setup", {
-// 	refresh(frm) {
-
-// 	},
-// });
-*/
-
 // Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
@@ -50,10 +39,6 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 				const purchaseTemplatesCreated = to_int(summary.purchase_templates_created);
 				const salesTemplateRowsAdded = to_int(summary.sales_template_rows_added);
 				const purchaseTemplateRowsAdded = to_int(summary.purchase_template_rows_added);
-				const withholdingGroupsCreated = to_int(summary.withholding_groups_created);
-				const withholdingCategoriesCreated = to_int(summary.withholding_categories_created);
-				const withholdingCategoryAccountsLinked = to_int(summary.withholding_category_accounts_linked);
-				const withholdingCategoryRatesAdded = to_int(summary.withholding_category_rates_added);
 				const errors = summary.errors || [];
 
 				if (
@@ -63,10 +48,6 @@ frappe.ui.form.on("FBR E-Inv Setup", {
 					purchaseTemplatesCreated === 0 &&
 					salesTemplateRowsAdded === 0 &&
 					purchaseTemplateRowsAdded === 0 &&
-					withholdingGroupsCreated === 0 &&
-					withholdingCategoriesCreated === 0 &&
-					withholdingCategoryAccountsLinked === 0 &&
-					withholdingCategoryRatesAdded === 0 &&
 					!errors.length
 				) {
 					frappe.msgprint(__("Accounts have already been set up."));
@@ -103,13 +84,6 @@ function render_pakistan_setup_summary(summary) {
 		`<b>${__("Purchase Templates Created")}:</b> ${to_int(summary.purchase_templates_created)}`,
 		`<b>${__("Purchase Templates Skipped")}:</b> ${to_int(summary.purchase_templates_skipped)}`,
 		`<b>${__("Purchase Template Rows Added")}:</b> ${to_int(summary.purchase_template_rows_added)}`,
-		`<b>${__("Withholding Groups Created")}:</b> ${to_int(summary.withholding_groups_created)}`,
-		`<b>${__("Withholding Groups Skipped")}:</b> ${to_int(summary.withholding_groups_skipped)}`,
-		`<b>${__("Withholding Categories Created")}:</b> ${to_int(summary.withholding_categories_created)}`,
-		`<b>${__("Withholding Categories Skipped")}:</b> ${to_int(summary.withholding_categories_skipped)}`,
-		`<b>${__("Withholding Accounts Linked")}:</b> ${to_int(summary.withholding_category_accounts_linked)}`,
-		`<b>${__("Withholding Accounts Skipped")}:</b> ${to_int(summary.withholding_category_accounts_skipped)}`,
-		`<b>${__("Withholding Rates Added")}:</b> ${to_int(summary.withholding_category_rates_added)}`,
 	];
 
 	if (errors.length) {
