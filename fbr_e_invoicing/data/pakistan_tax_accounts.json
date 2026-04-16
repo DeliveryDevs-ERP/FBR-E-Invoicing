@@ -531,6 +531,28 @@
       "report_type": "Balance Sheet"
     },
     {
+      "key": "Standard Purchases Tax 18%",
+      "account_name": "Standard Purchases Tax 18%",
+      "parent_key": "General Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 18.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "GST 18%",
+      "account_name": "GST 18%",
+      "parent_key": "Duties and Taxes",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 18.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
       "key": "Other Liabilities",
       "account_name": "Other Liabilities",
       "parent_key": "Current Liabilities",

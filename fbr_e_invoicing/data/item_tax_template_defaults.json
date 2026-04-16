@@ -229,6 +229,18 @@
       "account_name": "Purchases Service Tax 17%",
       "tax_rate": 17.0,
       "tax_category": null
+    },
+    {
+      "title": "FBR Standard GST 18%",
+      "account_name": "GST 18%",
+      "tax_rate": 18.0,
+      "tax_category": null
+    },
+    {
+      "title": "Standard Purchases Tax 18%",
+      "account_name": "Standard Purchases Tax 18%",
+      "tax_rate": 18.0,
+      "tax_category": null
     }
   ]
 }
