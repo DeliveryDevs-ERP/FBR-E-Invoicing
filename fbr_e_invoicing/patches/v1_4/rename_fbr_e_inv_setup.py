@@ -1,4 +1,5 @@
 import frappe
+from frappe.query_builder import DocType
 
 OLD = "FBR E-Inv Setup"
 NEW = "FBR E-Invoicing Setup"
@@ -27,11 +28,6 @@ def _fix_workspace_references():
 	for doctype in ("Workspace Link", "Workspace Shortcut"):
 		if not frappe.db.table_exists(doctype):
 			continue
-		frappe.db.sql(
-			f"UPDATE `tab{doctype}` SET link_to = %(new)s WHERE link_to = %(old)s",
-			{"old": OLD, "new": NEW},
-		)
-		frappe.db.sql(
-			f"UPDATE `tab{doctype}` SET label = %(new)s WHERE label = %(old)s",
-			{"old": OLD, "new": NEW},
-		)
+		doc = DocType(doctype)
+		frappe.qb.update(doc).set(doc.link_to, NEW).where(doc.link_to == OLD).run()
+		frappe.qb.update(doc).set(doc.label, NEW).where(doc.label == OLD).run()
