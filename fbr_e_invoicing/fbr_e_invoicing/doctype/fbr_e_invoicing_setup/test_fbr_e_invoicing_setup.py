@@ -9,9 +9,9 @@ from frappe.tests.utils import FrappeTestCase
 from fbr_e_invoicing.utils import get_fbr_setup_status
 
 
-class TestFBREInvSetup(FrappeTestCase):
+class TestFBREInvoicingSetup(FrappeTestCase):
     def test_setup_button_exists(self):
-        meta = frappe.get_meta("FBR E-Inv Setup")
+        meta = frappe.get_meta("FBR E-Invoicing Setup")
         self.assertTrue(meta.has_field("setup_tax_accounts_templates"))
         self.assertEqual(
             meta.get_field("setup_tax_accounts_templates").label,

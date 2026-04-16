@@ -31,9 +31,9 @@
         {
             "hidden": 0,
             "is_query_report": 0,
-            "label": "FBR E-Inv Setup",
+            "label": "FBR E-Invoicing Setup",
             "link_count": 0,
-            "link_to": "FBR E-Inv Setup",
+            "link_to": "FBR E-Invoicing Setup",
             "link_type": "DocType",
             "onboard": 0,
             "type": "Link"
@@ -214,8 +214,8 @@
     "sequence_id": 1.0,
     "shortcuts": [
         {
-            "label": "FBR E-Inv Setup",
-            "link_to": "FBR E-Inv Setup",
+            "label": "FBR E-Invoicing Setup",
+            "link_to": "FBR E-Invoicing Setup",
             "type": "DocType"
         },
         {

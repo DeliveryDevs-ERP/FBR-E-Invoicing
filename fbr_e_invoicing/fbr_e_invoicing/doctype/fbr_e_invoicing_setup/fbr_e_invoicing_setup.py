@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class FBREInvSetup(Document):
+class FBREInvoicingSetup(Document):
 	pass
