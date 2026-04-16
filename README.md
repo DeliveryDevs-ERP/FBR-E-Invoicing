@@ -13,7 +13,7 @@ This app currently covers:
 ## Features
 
 - FBR digital invoicing support for both Sales Invoice and POS Invoice
-- `FBR E-Inv Setup` with sandbox and production modes
+- `FBR E-Invoicing Setup` with sandbox and production modes
 - payload preview from invoice forms through `Show FBR Payload`
 - direct invoice submission through `Post to FBR`
 - bulk Sales Invoice submission from list view through `Submit to FBR`
@@ -68,11 +68,11 @@ These masters are populated automatically:
 - provinces
 - FBR sale types
 
-HS Codes and UOMs are **not** fetched on a fresh install. The sync requires a valid PRAL authorization token, and that token is normally empty until you configure `FBR E-Inv Setup`. Treat HS Code and UOM fetching as a manual post-setup step through `Fetch Master Data`.
+HS Codes and UOMs are **not** fetched on a fresh install. The sync requires a valid PRAL authorization token, and that token is normally empty until you configure `FBR E-Invoicing Setup`. Treat HS Code and UOM fetching as a manual post-setup step through `Fetch Master Data`.
 
 ## First-Time Setup
 
-Open `FBR E-Inv Setup` from the Pak Compliance workspace and complete the setup in this order:
+Open `FBR E-Invoicing Setup` from the Pak Compliance workspace and complete the setup in this order:
 
 1. Enter `PRAL Authorization Token`.
 2. Choose `Mode`.
@@ -135,14 +135,14 @@ The app includes Pakistan-specific setup helpers and data for:
 - province-specific tax charge templates
 - withholding defaults
 
-Use `Setup Tax Accounts + Templates` from `FBR E-Inv Setup` when you need to create or backfill this data for existing Pakistan companies.
+Use `Setup Tax Accounts + Templates` from `FBR E-Invoicing Setup` when you need to create or backfill this data for existing Pakistan companies.
 
 ## Workspace, Masters, Reports, and Print Formats
 
 ### App-Owned Records and Masters
 
 The app ships and exposes these main records and masters:
-- `FBR E-Inv Setup`
+- `FBR E-Invoicing Setup`
 - `FBR Queue`
 - `FBR Logs`
 - `HS Code`
