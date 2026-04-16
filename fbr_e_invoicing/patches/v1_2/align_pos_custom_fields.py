@@ -66,8 +66,6 @@ POS_INVOICE_ITEM_FIELDS = [
 
 def execute():
     _ensure_pos_custom_fields()
-    _backfill_response_typo()
-    _backfill_submit_to_fbr_default()
     frappe.clear_cache(doctype="POS Invoice")
     frappe.clear_cache(doctype="POS Invoice Item")
 
@@ -79,35 +77,4 @@ def _ensure_pos_custom_fields():
             "POS Invoice Item": POS_INVOICE_ITEM_FIELDS,
         },
         update=True,
-    )
-
-
-def _backfill_response_typo():
-    pos_columns = set(frappe.db.get_table_columns("POS Invoice") or [])
-    if "custom_fbr_response" not in pos_columns or "custom_fbr_responce" not in pos_columns:
-        return
-
-    frappe.db.sql(
-        """
-        UPDATE `tabPOS Invoice`
-        SET custom_fbr_response = CASE
-            WHEN IFNULL(custom_fbr_response, '') = '' THEN custom_fbr_responce
-            ELSE custom_fbr_response
-        END
-        WHERE IFNULL(custom_fbr_responce, '') != ''
-        """
-    )
-
-
-def _backfill_submit_to_fbr_default():
-    pos_columns = set(frappe.db.get_table_columns("POS Invoice") or [])
-    if "custom_submit_to_fbr" not in pos_columns:
-        return
-
-    frappe.db.sql(
-        """
-        UPDATE `tabPOS Invoice`
-        SET custom_submit_to_fbr = 1
-        WHERE custom_submit_to_fbr IS NULL
-        """
     )
