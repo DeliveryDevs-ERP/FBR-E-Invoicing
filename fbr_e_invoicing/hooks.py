@@ -29,14 +29,20 @@ doc_events = {
         "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
     },
     "Sales Invoice": {
-        "validate": "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
-        "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "validate": "fbr_e_invoicing.api.fbr_validation.calculate_fbr_custom_taxes",
+        "before_submit": [
+            "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
+            "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        ],
         "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
         "on_cancel": "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
     },
     "POS Invoice": {
-        "validate": "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
-        "before_submit": "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        "validate": "fbr_e_invoicing.api.fbr_validation.calculate_fbr_custom_taxes",
+        "before_submit": [
+            "fbr_e_invoicing.api.fbr_validation.validate_pos_invoice_fields",
+            "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+        ],
         "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
         "on_cancel": "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
         "on_submit": "fbr_e_invoicing.api.fbr_submission.submit_pos_invoice_on_submit",
@@ -210,12 +216,19 @@ fixtures = [
             [
                 "name",
                 "in",
-                ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"],
+                [
+                    "FBR E Invoicing POS Invoice Client Script",
+                    "FBR E Invoicing Sales Invoice Client Script",
+                ],
             ]
         ],
     },
     {
         "dt": "Custom HTML Block",
         "filters": [["name", "in", ["FBR Setup Instructions Block"]]],
+    },
+    {
+        "dt": "Web Template",
+        "filters": [["name", "in", ["E-Invoice QR Code"]]],
     },
 ]

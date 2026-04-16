@@ -19,9 +19,9 @@ FBR_UOM_URL = "https://gw.fbr.gov.pk/pdi/v1/uom"
 
 def _get_pral_token():
     auth_token = None
-    if frappe.db.exists("DocType", "FBR E-Inv Setup"):
+    if frappe.db.exists("DocType", "FBR E-Invoicing Setup"):
         auth_token = frappe.db.get_single_value(
-            "FBR E-Inv Setup", "pral_authorization_token"
+            "FBR E-Invoicing Setup", "pral_authorization_token"
         )
     if not auth_token:
         auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
@@ -29,10 +29,10 @@ def _get_pral_token():
 
 
 def _has_setup_field(fieldname):
-    if not frappe.db.exists("DocType", "FBR E-Inv Setup"):
+    if not frappe.db.exists("DocType", "FBR E-Invoicing Setup"):
         return False
     try:
-        return bool(frappe.get_meta("FBR E-Inv Setup").has_field(fieldname))
+        return bool(frappe.get_meta("FBR E-Invoicing Setup").has_field(fieldname))
     except Exception:
         return False
 
@@ -323,7 +323,7 @@ def run_master_data_sync():
 
     if _has_setup_field("master_data_retrieved"):
         frappe.db.set_single_value(
-            "FBR E-Inv Setup",
+            "FBR E-Invoicing Setup",
             "master_data_retrieved",
             0 if failed else 1,
         )
@@ -367,16 +367,32 @@ def run_master_data_sync():
 
 
 def run_post_migrate_sync():
-    """Post-migration sync for static Province, HS Code, and UOM master data."""
+    """Post-migration sync for static Province and Pakistan tax setup."""
     populate_provinces()
-    hs_result = sync_hs_codes() or {}
-    uom_result = sync_uoms() or {}
-    master_ok = (
-        hs_result.get("status_code") == 200 and uom_result.get("status_code") == 200
-    )
-    if _has_setup_field("master_data_retrieved"):
-        frappe.db.set_single_value(
-            "FBR E-Inv Setup", "master_data_retrieved", 1 if master_ok else 0
+    _ensure_pakistan_tax_accounts_and_templates()
+
+
+def _ensure_pakistan_tax_accounts_and_templates():
+    """
+    Create-only: ensure Pakistan tax accounts and templates exist for all Pakistan companies.
+    Existing records are never modified, overwritten, or deleted.
+    """
+    try:
+        from fbr_e_invoicing.coa_setup.overrides.company import (
+            setup_pakistan_for_existing_companies,
+        )
+
+        result = setup_pakistan_for_existing_companies(ignore_permissions=True)
+        created = result.get("accounts_created", 0) + result.get("item_templates_created", 0)
+        skipped = result.get("accounts_skipped", 0) + result.get("item_templates_skipped", 0)
+        if created or skipped:
+            frappe.logger().info(
+                f"Pakistan tax setup: {created} created, {skipped} skipped (existing left untouched)."
+            )
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Pakistan Tax Setup: Post-migrate auto-creation failed",
         )
 
 
@@ -395,7 +411,7 @@ def is_api_key_valid():
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            frappe.db.set_single_value("FBR E-Inv Setup", "is_api_token_valid", 1)
+            frappe.db.set_single_value("FBR E-Invoicing Setup", "is_api_token_valid", 1)
             return True
         if response.status_code == 401:
             return False
@@ -415,13 +431,13 @@ def get_fbr_setup_status():
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
     api_endpoint = (
-        frappe.db.get_single_value("FBR E-Inv Setup", "api_endpoint") or ""
+        frappe.db.get_single_value("FBR E-Invoicing Setup", "api_endpoint") or ""
     ).strip()
     token = (
-        frappe.db.get_single_value("FBR E-Inv Setup", "pral_authorization_token") or ""
+        frappe.db.get_single_value("FBR E-Invoicing Setup", "pral_authorization_token") or ""
     ).strip()
     master_data_retrieved = (
-        frappe.db.get_single_value("FBR E-Inv Setup", "master_data_retrieved")
+        frappe.db.get_single_value("FBR E-Invoicing Setup", "master_data_retrieved")
         if _has_setup_field("master_data_retrieved")
         else 0
     )

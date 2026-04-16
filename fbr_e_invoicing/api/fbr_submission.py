@@ -349,14 +349,14 @@ def submit_pos_invoice_on_submit(doc, method):
 
 def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
     """Submit payload to FBR API via HTTP POST and return structured result."""
-    fbr_settings = frappe.get_single("FBR E-Inv Setup")
+    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
     api_endpoint = (fbr_settings.api_endpoint or "").strip()
     token = (fbr_settings.pral_authorization_token or "").strip()
 
     if not api_endpoint or not token:
         return {
             "success": False,
-            "error": "FBR API settings not configured in 'FBR E-Inv Setup'.",
+            "error": "FBR API settings not configured in 'FBR E-Invoicing Setup'.",
             "status_code": None,
             "data": {},
             "api_version": "",

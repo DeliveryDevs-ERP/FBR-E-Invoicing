@@ -24,7 +24,7 @@ def _mode_error_message(configured_mode: str | None = None) -> str:
     configured = (configured_mode or "").strip()
     configured_display = configured or "blank"
     return (
-        "Invalid Mode in 'FBR E-Inv Setup'. "
+        "Invalid Mode in 'FBR E-Invoicing Setup'. "
         f"Current value: '{configured_display}'. "
         f"Please set Mode to '{SANDBOX_MODE_LABEL}' or '{PRODUCTION_MODE_LABEL}'."
     )
@@ -32,8 +32,8 @@ def _mode_error_message(configured_mode: str | None = None) -> str:
 
 def _resolve_fbr_mode_or_throw() -> str:
     configured_mode = (
-        frappe.db.get_single_value("FBR E-Inv Setup", "mode")
-        if frappe.db.exists("DocType", "FBR E-Inv Setup")
+        frappe.db.get_single_value("FBR E-Invoicing Setup", "mode")
+        if frappe.db.exists("DocType", "FBR E-Invoicing Setup")
         else ""
     )
     normalized_mode = (configured_mode or "").strip().casefold()

@@ -1,0 +1,25 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Web Template",
+  "fields": [
+   {
+    "default": null,
+    "fieldname": "qr_text",
+    "fieldtype": "Text",
+    "label": "QR Text",
+    "options": null,
+    "parent": "E-Invoice QR Code",
+    "parentfield": "fields",
+    "parenttype": "Web Template",
+    "reqd": 0
+   }
+  ],
+  "modified": "2026-04-15 23:32:37.541604",
+  "module": "FBR E-Invoicing",
+  "name": "E-Invoice QR Code",
+  "standard": 0,
+  "template": "{# E-Invoice QR Code web template #}\r\n{%- set data = (values.qr_text or \"\") | trim -%}\r\n{%- if data -%}\r\n  {# Heuristics: treat as base64 if starts with a data URL or looks like PNG/JPEG base64 #}\r\n  {%- set looks_like_data_url = data.startswith('data:image') -%}\r\n  {%- set looks_like_png_b64 = (not looks_like_data_url) and (data[:10] == 'iVBORw0KG') -%}\r\n  {%- set looks_like_jpg_b64 = (not looks_like_data_url) and (data[:7] == '/9j/4AA') -%}\r\n  {% if looks_like_data_url or looks_like_png_b64 or looks_like_jpg_b64 %}\r\n    <img\r\n      src=\"{{ data if looks_like_data_url else ('data:image/png;base64,' ~ data) }}\"\r\n      alt=\"E-Invoice QR Code\"\r\n      style=\"width:140px; height:140px; object-fit:contain;\"\r\n    />\r\n  {% else %}\r\n    {# Treat as raw text -> generate QR via external service #}\r\n    <img\r\n      src=\"https://quickchart.io/qr?size=140&text={{ data | urlencode }}\"\r\n      alt=\"E-Invoice QR Code\"\r\n      style=\"width:140px; height:140px; object-fit:contain;\"\r\n    />\r\n  {% endif %}\r\n{%- else -%}\r\n  <div style=\"font-size:10px; color:#666;\">QR code not available</div>\r\n{%- endif -%}\r\n",
+  "type": "Component"
+ }
+]
