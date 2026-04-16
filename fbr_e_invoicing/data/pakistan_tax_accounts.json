@@ -443,6 +443,17 @@
       "report_type": "Balance Sheet"
     },
     {
+      "key": "Standard Purchases Tax 18%",
+      "account_name": "Standard Purchases Tax 18%",
+      "parent_key": "General Tax",
+      "root_type": "Asset",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 18.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
       "key": "Purchases Tax Telecommunication Services 19.5%",
       "account_name": "Purchases Tax Telecommunication Services 19.5%",
       "parent_key": "General Tax",
@@ -527,6 +538,17 @@
       "is_group": 0,
       "account_type": "Tax",
       "tax_rate": 17.0,
+      "account_number": null,
+      "report_type": "Balance Sheet"
+    },
+    {
+      "key": "GST 18%",
+      "account_name": "GST 18%",
+      "parent_key": "Duties and Taxes",
+      "root_type": "Liability",
+      "is_group": 0,
+      "account_type": "Tax",
+      "tax_rate": 18.0,
       "account_number": null,
       "report_type": "Balance Sheet"
     },
