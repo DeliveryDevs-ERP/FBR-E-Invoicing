@@ -1,254 +1,216 @@
 {
-    "app": "fbr_e_invoicing",
-    "charts": [],
-    "content": "[{\"id\":\"Custom_Block_Setup_Instructions\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Setup Instructions\",\"col\":12}},{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
-    "creation": "2026-02-10 12:37:03.113486",
-    "custom_blocks": [
-        {
-            "custom_block_name": "FBR Setup Instructions Block",
-            "label": "Setup Instructions"
-        }
-    ],
-    "docstatus": 0,
-    "doctype": "Workspace",
-    "for_user": "",
-    "hide_custom": 0,
-    "icon": "dashboard",
-    "idx": 1,
-    "indicator_color": "green",
-    "is_hidden": 0,
-    "label": "Pak Compliance",
-    "link_type": "DocType",
-    "links": [
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "Settings",
-            "link_count": 1,
-            "onboard": 0,
-            "type": "Card Break"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "FBR E-Inv Setup",
-            "link_count": 0,
-            "link_to": "FBR E-Inv Setup",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "Masters",
-            "link_count": 4,
-            "onboard": 0,
-            "type": "Card Break"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "HS Code",
-            "link_count": 0,
-            "link_to": "HS Code",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "FBR Sale Type",
-            "link_count": 0,
-            "link_to": "FBR Sale Type",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "Province",
-            "link_count": 0,
-            "link_to": "Province",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "UOM",
-            "link_count": 0,
-            "link_to": "UOM",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "Logs",
-            "link_count": 2,
-            "onboard": 0,
-            "type": "Card Break"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "FBR Queue",
-            "link_count": 0,
-            "link_to": "FBR Queue",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "FBR Logs",
-            "link_count": 0,
-            "link_to": "FBR Logs",
-            "link_type": "DocType",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 0,
-            "label": "Reports",
-            "link_count": 7,
-            "onboard": 0,
-            "type": "Card Break"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Punjab",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Punjab",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Sindh",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Sindh",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - KPK",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - KPK",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Balochistan",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Balochistan",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Capital Territory",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Capital Territory",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Gilgit Baltistan",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Gilgit Baltistan",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        },
-        {
-            "hidden": 0,
-            "is_query_report": 1,
-            "label": "FBR Sales Tax Report - Azad Jammu and Kashmir",
-            "link_count": 0,
-            "link_to": "FBR Sales Tax Report - Azad Jammu and Kashmir",
-            "link_type": "Report",
-            "onboard": 0,
-            "type": "Link"
-        }
-    ],
-    "modified": "2026-02-15 15:31:30.000000",
-    "modified_by": "Administrator",
-    "module": "FBR E-Invoicing",
-    "name": "Pak Compliance",
-    "number_cards": [],
-    "owner": "Administrator",
-    "parent_page": "",
-    "public": 1,
-    "quick_lists": [],
-    "restrict_to_domain": "",
-    "roles": [
-        {
-            "role": "System Manager"
-        },
-        {
-            "role": "Accounts Manager"
-        }
-    ],
-    "sequence_id": 1.0,
-    "shortcuts": [
-        {
-            "label": "FBR E-Inv Setup",
-            "link_to": "FBR E-Inv Setup",
-            "type": "DocType"
-        },
-        {
-            "label": "HS Code",
-            "link_to": "HS Code",
-            "type": "DocType"
-        },
-        {
-            "label": "FBR Sale Type",
-            "link_to": "FBR Sale Type",
-            "type": "DocType"
-        },
-        {
-            "label": "Province",
-            "link_to": "Province",
-            "type": "DocType"
-        },
-        {
-            "label": "FBR Logs",
-            "link_to": "FBR Logs",
-            "type": "DocType"
-        },
-        {
-            "label": "FBR Queue",
-            "link_to": "FBR Queue",
-            "type": "DocType"
-        },
-        {
-            "label": "UOM",
-            "link_to": "UOM",
-            "type": "DocType"
-        }
-    ],
-    "title": "Pak Compliance",
-    "type": "Workspace"
+ "charts": [],
+ "content": "[{\"id\":\"Custom_Block_Setup_Instructions\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Setup Instructions\",\"col\":12}},{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
+ "creation": "2026-02-10 12:37:03.113486",
+ "custom_blocks": [
+  {
+   "custom_block_name": "FBR Setup Instructions Block",
+   "label": "Setup Instructions"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "dashboard",
+ "idx": 1,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Pak Compliance",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "HS Code",
+   "link_count": 0,
+   "link_to": "HS Code",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "FBR Sale Type",
+   "link_count": 0,
+   "link_to": "FBR Sale Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Province",
+   "link_count": 0,
+   "link_to": "Province",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UOM",
+   "link_count": 0,
+   "link_to": "UOM",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logs",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "FBR Queue",
+   "link_count": 0,
+   "link_to": "FBR Queue",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "FBR Logs",
+   "link_count": 0,
+   "link_to": "FBR Logs",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 7,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Punjab",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Punjab",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Sindh",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Sindh",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - KPK",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - KPK",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Balochistan",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Balochistan",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Capital Territory",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Capital Territory",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Gilgit Baltistan",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Gilgit Baltistan",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "FBR Sales Tax Report - Azad Jammu and Kashmir",
+   "link_count": 0,
+   "link_to": "FBR Sales Tax Report - Azad Jammu and Kashmir",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "FBR E-Invoicing Setup",
+   "link_count": 0,
+   "link_to": "FBR E-Invoicing Setup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-16 00:43:22.098083",
+ "modified_by": "Administrator",
+ "module": "FBR E-Invoicing",
+ "name": "Pak Compliance",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  }
+ ],
+ "sequence_id": 1.0,
+ "shortcuts": [],
+ "title": "Pak Compliance"
 }

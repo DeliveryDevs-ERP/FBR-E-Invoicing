@@ -96,6 +96,11 @@ def _ensure_province_tax_charge_template(
     skipped_key: str,
     rows_added_key: str,
 ):
+    """
+    Create-only (additive): ensure a Sales/Purchase Taxes and Charges Template exists.
+    If the template already exists, only missing tax rows are appended.
+    Existing rows are never deleted, modified, or overwritten.
+    """
     tax_category = (row.get("tax_category") or "").strip()
     province_label = (row.get("province_label") or "").strip()
     configured_taxes = row.get(taxes_field) or []
@@ -273,6 +278,10 @@ def _core_erpnext_accounts_ready(company: str) -> bool:
 
 
 def ensure_pakistan_tax_accounts(company: str) -> dict[str, Any]:
+    """
+    Create-only: ensure Pakistan tax accounts exist for the company.
+    Existing accounts are skipped and never modified or overwritten.
+    """
     summary = {
         "accounts_created": 0,
         "accounts_skipped": 0,
@@ -378,6 +387,10 @@ def ensure_pakistan_tax_accounts(company: str) -> dict[str, Any]:
 
 
 def ensure_pakistan_item_tax_templates(company: str) -> dict[str, Any]:
+    """
+    Create-only: ensure Item Tax Templates exist for the company.
+    Existing templates are skipped and never modified or overwritten.
+    """
     summary = {
         "item_templates_created": 0,
         "item_templates_skipped": 0,

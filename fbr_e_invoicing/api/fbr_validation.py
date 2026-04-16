@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from datetime import datetime
 from time import perf_counter
-from frappe.utils import nowdate, now_datetime
+from frappe.utils import flt, nowdate, now_datetime
 import requests
 from requests.exceptions import RequestException
 from urllib.parse import urlparse
@@ -15,8 +15,8 @@ FBR_MODE_PRODUCTION = "production"
 
 def _append_mode_validation_error(errors):
     configured_mode = (
-        frappe.db.get_single_value("FBR E-Inv Setup", "mode")
-        if frappe.db.exists("DocType", "FBR E-Inv Setup")
+        frappe.db.get_single_value("FBR E-Invoicing Setup", "mode")
+        if frappe.db.exists("DocType", "FBR E-Invoicing Setup")
         else ""
     )
     normalized_mode = (configured_mode or "").strip().casefold()
@@ -26,33 +26,31 @@ def _append_mode_validation_error(errors):
     configured_display = (configured_mode or "").strip() or "blank"
     errors.append(
         _(
-            "Invalid Mode in FBR E-Inv Setup (current: {0}). "
+            "Invalid Mode in FBR E-Invoicing Setup (current: {0}). "
             "Please set Mode to Sandbox Testing or Production."
         ).format(configured_display)
     )
 
 
 def validate_fbr_fields(doc, method):
-    """Validate FBR required fields before saving Sales Invoice"""
+    """Validate FBR required fields before submitting Sales Invoice"""
     if not doc.custom_submit_to_fbr:
         return
 
-    errors = _collect_sales_invoice_errors(doc, show_messages=True)
+    errors = _collect_sales_invoice_errors(doc)
 
-    # If there are validation errors, prevent save
+    # If there are validation errors, prevent submit
     if errors:
         frappe.throw("<br>".join(errors), title=_("FBR Validation Failed"))
 
 
-def _collect_sales_invoice_errors(doc, show_messages=False):
-    # Intentionally retained as requested: posting date is forced on validate.
-    doc.posting_date = nowdate()
+def _collect_sales_invoice_errors(doc):
     errors = []
 
     # Check if FBR setup is configured
-    fbr_settings = frappe.get_single("FBR E-Inv Setup")
+    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
     if not fbr_settings.api_endpoint:
-        errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
+        errors.append(_("FBR API endpoint not configured in FBR E-Invoicing Setup"))
     _append_mode_validation_error(errors)
 
     # Check required FBR fields
@@ -60,19 +58,7 @@ def _collect_sales_invoice_errors(doc, show_messages=False):
         errors.append(_("Seller Province is required for FBR submission"))
 
     if not doc.tax_category:
-        errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
-
-    # Validate customer tax information
-    if doc.customer:
-        customer = frappe.get_doc("Customer", doc.customer)
-        if not customer.tax_id and not customer.custom_province and show_messages:
-            frappe.msgprint(
-                _(
-                    "Customer {0} is missing Tax ID or Province information required for FBR"
-                ).format(customer.customer_name),
-                alert=True,
-                indicator="orange",
-            )
+        errors.append(_("Tax Category is required for FBR Invoicing"))
 
     # Validate company tax information
     if doc.company:
@@ -137,7 +123,7 @@ def validate_fbr_document(doctype: str, docname: str):
         errors = []
 
         if doctype == "Sales Invoice":
-            errors.extend(_collect_sales_invoice_errors(doc, show_messages=False))
+            errors.extend(_collect_sales_invoice_errors(doc))
         elif doctype == "POS Invoice":
             validate_pos_invoice_fbr(doc, errors)
 
@@ -153,9 +139,9 @@ def validate_fbr_document(doctype: str, docname: str):
 
 def validate_pos_invoice_fbr(doc, errors):
     """Validate POS Invoice for FBR submission"""
-    fbr_settings = frappe.get_single("FBR E-Inv Setup")
+    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
     if not fbr_settings.api_endpoint:
-        errors.append(_("FBR API endpoint not configured in FBR E-Inv Setup"))
+        errors.append(_("FBR API endpoint not configured in FBR E-Invoicing Setup"))
     _append_mode_validation_error(errors)
 
     # POS Invoice specific validations
@@ -177,7 +163,7 @@ def validate_pos_invoice_fbr(doc, errors):
         errors.append(_("Seller Province is required for FBR submission"))
 
     if not doc.tax_category:
-        errors.append(_("Tax Category (Buyer Province) is required for FBR submission"))
+        errors.append(_("Tax Category is required for FBR Invoicing"))
 
     if seller_company:
         seller_company_tax_id = frappe.db.get_value("Company", seller_company, "tax_id")
@@ -259,7 +245,7 @@ def get_fbr_warnings(doc):
 def check_fbr_api_status():
     """Check if FBR API is accessible"""
     try:
-        fbr_settings = frappe.get_single("FBR E-Inv Setup")
+        fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
 
         if not fbr_settings.api_endpoint:
             return {"status": "error", "message": _("FBR API endpoint not configured")}
@@ -419,6 +405,37 @@ def force_today_posting_date(doc, method):
     doc.posting_date = nowdate()
     if hasattr(doc, "posting_time"):
         doc.posting_time = now_datetime().time()
+
+
+def calculate_fbr_custom_taxes(doc, method=None):
+    """Populate custom_tax_rate / custom_tax_amount on each invoice row.
+
+    Source of truth is the item_tax_template linked on the row. ERPNext
+    normally fills `item_tax_rate` (native JSON map of account → rate) from
+    that template during its own validate(); we read it here. If it is
+    missing we fall back to reading the template rows directly so manual
+    row-level template picks still work.
+    """
+    for item in doc.get("items") or []:
+        rate = 0.0
+        item_tax_rate = getattr(item, "item_tax_rate", None)
+        if item_tax_rate:
+            try:
+                parsed = json.loads(item_tax_rate) if isinstance(item_tax_rate, str) else item_tax_rate
+                rate = sum(flt(v) for v in (parsed or {}).values())
+            except (ValueError, TypeError):
+                rate = 0.0
+
+        if not rate and getattr(item, "item_tax_template", None):
+            rows = frappe.get_all(
+                "Item Tax Template Detail",
+                filters={"parent": item.item_tax_template},
+                fields=["tax_rate"],
+            )
+            rate = sum(flt(r.tax_rate) for r in rows)
+
+        item.custom_tax_rate = rate
+        item.custom_tax_amount = flt(flt(item.amount) * rate / 100.0, 2)
 
 
 def block_cancel_for_successfully_submitted_fbr_invoice(doc, method=None):
