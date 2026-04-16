@@ -1,6 +1,7 @@
 [pre_model_sync]
 # Patches added in this section will be executed before doctypes are migrated
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+fbr_e_invoicing.patches.v1_4.rename_fbr_e_inv_setup
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
@@ -8,3 +9,4 @@
 fbr_e_invoicing.patches.v1_0.populate_hs_codes
 fbr_e_invoicing.patches.v1_2.align_pos_custom_fields
 fbr_e_invoicing.patches.v1_3.setup_pakistan_tax_accounts_and_item_templates
+fbr_e_invoicing.patches.v1_4.add_pos_item_tax_fields

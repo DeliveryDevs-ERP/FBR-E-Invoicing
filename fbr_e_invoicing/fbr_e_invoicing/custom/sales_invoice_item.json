@@ -39,7 +39,7 @@
    "length": 0,
    "link_filters": null,
    "mandatory_depends_on": null,
-   "modified": "2025-08-19 12:45:14.463548",
+   "modified": "2026-04-15 23:20:43.808053",
    "modified_by": "Administrator",
    "module": null,
    "name": "Sales Invoice Item-custom_hs_code",
@@ -53,7 +53,7 @@
    "print_hide": 0,
    "print_hide_if_no_value": 0,
    "print_width": null,
-   "read_only": 1,
+   "read_only": 0,
    "read_only_depends_on": null,
    "report_hide": 0,
    "reqd": 0,
@@ -257,7 +257,7 @@
    "width": null
   }
  ],
-"doctype": "Sales Invoice Item",
+ "doctype": "Sales Invoice Item",
  "sync_on_migrate": 1,
-  "property_setters": []
+ "property_setters": []
 }
