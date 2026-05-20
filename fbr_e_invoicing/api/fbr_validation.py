@@ -9,6 +9,8 @@ import requests
 from requests.exceptions import RequestException
 from urllib.parse import urlparse
 
+from fbr_e_invoicing.utils import is_fbr_enabled
+
 FBR_MODE_SANDBOX = "sandbox testing"
 FBR_MODE_PRODUCTION = "production"
 
@@ -34,6 +36,8 @@ def _append_mode_validation_error(errors):
 
 def validate_fbr_fields(doc, method):
     """Validate FBR required fields before submitting Sales Invoice"""
+    if not is_fbr_enabled():
+        return
     if not doc.custom_submit_to_fbr:
         return
 
@@ -118,6 +122,8 @@ def validate_fbr_items(doc, errors):
 @frappe.whitelist()
 def validate_fbr_document(doctype: str, docname: str):
     """API method to validate a document for FBR compliance"""
+    if not is_fbr_enabled():
+        return {"valid": True, "errors": [], "warnings": []}
     try:
         doc = frappe.get_doc(doctype, docname)
         errors = []
@@ -209,6 +215,8 @@ def validate_pos_invoice_fbr(doc, errors):
 
 def validate_pos_invoice_fields(doc, method=None):
     """Validate POS Invoice FBR fields using server-side hook."""
+    if not is_fbr_enabled():
+        return
     if not doc.custom_submit_to_fbr:
         return
 
@@ -242,9 +250,15 @@ def get_fbr_warnings(doc):
 
 
 @frappe.whitelist()
-def check_fbr_api_status():
-    """Check if FBR API is accessible"""
+def check_fbr_api_status(company=None):
+    """Check if FBR API is accessible.
+
+    The token is read from the supplied `company` (Default Company when
+    omitted). See `fbr_e_invoicing.utils._get_pral_token`.
+    """
     try:
+        from fbr_e_invoicing.utils import _get_pral_token
+
         fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
 
         if not fbr_settings.api_endpoint:
@@ -252,7 +266,7 @@ def check_fbr_api_status():
 
         api_endpoint = (fbr_settings.api_endpoint or "").strip()
         healthcheck_url = _resolve_healthcheck_url(api_endpoint)
-        token = (fbr_settings.pral_authorization_token or "").strip()
+        token = _get_pral_token(company)
         verify_ssl = getattr(fbr_settings, "verify_ssl", True)
         connect_timeout = float(getattr(fbr_settings, "connect_timeout", 5.0))
         read_timeout = float(getattr(fbr_settings, "read_timeout", 10.0))
@@ -446,6 +460,8 @@ def block_cancel_for_successfully_submitted_fbr_invoice(doc, method=None):
     - custom_fbr_status is Valid (case-insensitive)
     - custom_fbr_invoice_number is present
     """
+    if not is_fbr_enabled():
+        return
     fbr_status = (getattr(doc, "custom_fbr_status", "") or "").strip().lower()
     fbr_invoice_number = (getattr(doc, "custom_fbr_invoice_number", "") or "").strip()
 
