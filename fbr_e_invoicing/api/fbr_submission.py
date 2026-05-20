@@ -105,7 +105,9 @@ def submit_single_invoice(
     payload = payload_result["payload"]
 
     # 3. HTTP Submit
-    api_result = submit_to_fbr_api(payload, doc.name, doctype, is_retry)
+    api_result = submit_to_fbr_api(
+        payload, doc.name, doctype, getattr(doc, "company", None), is_retry
+    )
     response = api_result.get("data") or {}
     status_code = api_result.get("status_code")
     processing_time = round((perf_counter() - start_time) * 1000, 2)
@@ -347,16 +349,44 @@ def submit_pos_invoice_on_submit(doc, method):
         )
 
 
-def submit_to_fbr_api(payload, document_name, document_type, is_retry=False):
-    """Submit payload to FBR API via HTTP POST and return structured result."""
+def submit_to_fbr_api(
+    payload, document_name, document_type, company=None, is_retry=False
+):
+    """Submit payload to FBR API via HTTP POST and return structured result.
+
+    The API endpoint and connection settings come from `FBR E-Invoicing Setup`
+    (global), while the PRAL Authorization Token is read from the supplied
+    `company`'s `custom_fbr_authorization_token` so each company posts under
+    its own credentials. When `company` is omitted, the Default Company's
+    token is used (with `frappe.conf.PRAL_AUTHORIZATION_TOKEN` as a final
+    fallback) — see `fbr_e_invoicing.utils._get_pral_token`.
+    """
+    from fbr_e_invoicing.utils import _get_pral_token
+
     fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
     api_endpoint = (fbr_settings.api_endpoint or "").strip()
-    token = (fbr_settings.pral_authorization_token or "").strip()
+    token = _get_pral_token(company)
 
-    if not api_endpoint or not token:
+    if not api_endpoint:
         return {
             "success": False,
-            "error": "FBR API settings not configured in 'FBR E-Invoicing Setup'.",
+            "error": "FBR API endpoint not configured in 'FBR E-Invoicing Setup'.",
+            "status_code": None,
+            "data": {},
+            "api_version": "",
+            "retryable": True,
+            "failure_type": "config_error",
+        }
+
+    if not token:
+        company_label = company or "(no company)"
+        return {
+            "success": False,
+            "error": (
+                f"FBR PRAL Authorization Token is not set on Company "
+                f"'{company_label}'. Open the Company form and fill in "
+                f"'FBR PRAL Authorization Token'."
+            ),
             "status_code": None,
             "data": {},
             "api_version": "",

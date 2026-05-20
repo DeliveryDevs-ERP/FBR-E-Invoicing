@@ -9,3 +9,4 @@ fbr_e_invoicing.patches.v1_4.rename_fbr_e_inv_setup
 fbr_e_invoicing.patches.v1_0.populate_hs_codes
 fbr_e_invoicing.patches.v1_2.align_pos_custom_fields
 fbr_e_invoicing.patches.v1_4.add_pos_item_tax_fields
+fbr_e_invoicing.patches.v1_5.remove_cust_test_field
