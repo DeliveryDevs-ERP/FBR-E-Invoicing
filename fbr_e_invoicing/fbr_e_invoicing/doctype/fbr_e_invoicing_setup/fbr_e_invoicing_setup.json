@@ -5,7 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "pral_authorization_token",
+  "enabled",
   "api_endpoint",
   "mode",
   "fetch_master_data",
@@ -19,9 +19,12 @@
  ],
  "fields": [
   {
-   "fieldname": "pral_authorization_token",
-   "fieldtype": "Data",
-   "label": "PRAL Authorization Token"
+   "default": "0",
+   "description": "When disabled, all FBR validations on Sales Invoice and POS Invoice are skipped. Turn this on once setup is complete and you are ready to enforce FBR compliance.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
   },
   {
    "fieldname": "api_endpoint",
@@ -94,7 +97,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-16 00:00:00.000000",
+ "modified": "2026-05-21 05:00:00.000000",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "FBR E-Invoicing Setup",

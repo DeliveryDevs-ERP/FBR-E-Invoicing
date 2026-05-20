@@ -7,8 +7,9 @@ frappe.ui.form.on("FBR E-Invoicing Setup", {
 	},
 
 	fetch_master_data(frm) {
-		if (!has_required_fbr_credentials(frm)) {
-			frappe.msgprint(__("Please save the API Endpoint and Authorization Token first."));
+		const api_endpoint = (frm.doc.api_endpoint || "").trim();
+		if (!api_endpoint) {
+			frappe.msgprint(__("Please save the API Endpoint first."));
 			return;
 		}
 
@@ -28,12 +29,6 @@ frappe.ui.form.on("FBR E-Invoicing Setup", {
 
 	// setup_tax_accounts_templates handler removed — backend function kept for future use.
 });
-
-function has_required_fbr_credentials(frm) {
-	const api_endpoint = (frm.doc.api_endpoint || "").trim();
-	const pral_authorization_token = (frm.doc.pral_authorization_token || "").trim();
-	return Boolean(api_endpoint && pral_authorization_token);
-}
 
 function to_int(value) {
 	return Number.parseInt(value || 0, 10) || 0;
