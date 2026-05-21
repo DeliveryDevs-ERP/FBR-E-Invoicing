@@ -9,34 +9,50 @@ import requests
 from requests.exceptions import RequestException
 from urllib.parse import urlparse
 
-from fbr_e_invoicing.utils import is_fbr_enabled
+from fbr_e_invoicing.utils import (
+    is_fbr_enabled,
+    _get_fbr_endpoint,
+    _get_fbr_mode,
+    _get_pral_token,
+)
 
 FBR_MODE_SANDBOX = "sandbox testing"
 FBR_MODE_PRODUCTION = "production"
 
 
-def _append_mode_validation_error(errors):
-    configured_mode = (
-        frappe.db.get_single_value("FBR E-Invoicing Setup", "mode")
-        if frappe.db.exists("DocType", "FBR E-Invoicing Setup")
-        else ""
-    )
-    normalized_mode = (configured_mode or "").strip().casefold()
-    if normalized_mode in {FBR_MODE_SANDBOX, FBR_MODE_PRODUCTION}:
+def _append_company_fbr_config_errors(errors, company):
+    """Check that the invoice's Company has the FBR config it needs to post."""
+    if not company:
+        errors.append(_("Company is required for FBR submission"))
         return
 
-    configured_display = (configured_mode or "").strip() or "blank"
-    errors.append(
-        _(
-            "Invalid Mode in FBR E-Invoicing Setup (current: {0}). "
-            "Please set Mode to Sandbox Testing or Production."
-        ).format(configured_display)
-    )
+    if not _get_fbr_endpoint(company):
+        errors.append(
+            _("FBR API endpoint is not set on Company {0} (FBR tab)").format(company)
+        )
+
+    if not _get_pral_token(company):
+        errors.append(
+            _("PRAL Authorization Token is not set on Company {0} (FBR tab)").format(
+                company
+            )
+        )
+
+    mode_value = _get_fbr_mode(company)
+    normalized = (mode_value or "").casefold()
+    if normalized not in {FBR_MODE_SANDBOX, FBR_MODE_PRODUCTION}:
+        display = mode_value or "blank"
+        errors.append(
+            _(
+                "Invalid FBR Mode on Company {0} (current: {1}). "
+                "Set Mode to Sandbox Testing or Production on the FBR tab."
+            ).format(company, display)
+        )
 
 
 def validate_fbr_fields(doc, method):
     """Validate FBR required fields before submitting Sales Invoice"""
-    if not is_fbr_enabled():
+    if not is_fbr_enabled(getattr(doc, "company", None)):
         return
     if not doc.custom_submit_to_fbr:
         return
@@ -51,11 +67,8 @@ def validate_fbr_fields(doc, method):
 def _collect_sales_invoice_errors(doc):
     errors = []
 
-    # Check if FBR setup is configured
-    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
-    if not fbr_settings.api_endpoint:
-        errors.append(_("FBR API endpoint not configured in FBR E-Invoicing Setup"))
-    _append_mode_validation_error(errors)
+    # Check Company-level FBR config (endpoint, token, mode)
+    _append_company_fbr_config_errors(errors, getattr(doc, "company", None))
 
     # Check required FBR fields
     if not doc.custom_province:
@@ -122,10 +135,15 @@ def validate_fbr_items(doc, errors):
 @frappe.whitelist()
 def validate_fbr_document(doctype: str, docname: str):
     """API method to validate a document for FBR compliance"""
-    if not is_fbr_enabled():
-        return {"valid": True, "errors": [], "warnings": []}
     try:
         doc = frappe.get_doc(doctype, docname)
+    except Exception as e:
+        return {"valid": False, "errors": [str(e)], "warnings": []}
+
+    if not is_fbr_enabled(getattr(doc, "company", None)):
+        return {"valid": True, "errors": [], "warnings": []}
+
+    try:
         errors = []
 
         if doctype == "Sales Invoice":
@@ -145,11 +163,6 @@ def validate_fbr_document(doctype: str, docname: str):
 
 def validate_pos_invoice_fbr(doc, errors):
     """Validate POS Invoice for FBR submission"""
-    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
-    if not fbr_settings.api_endpoint:
-        errors.append(_("FBR API endpoint not configured in FBR E-Invoicing Setup"))
-    _append_mode_validation_error(errors)
-
     # POS Invoice specific validations
     if not doc.customer:
         errors.append(_("Customer is required for FBR submission"))
@@ -157,13 +170,16 @@ def validate_pos_invoice_fbr(doc, errors):
     if not doc.pos_profile:
         errors.append(_("POS Profile is required"))
 
-    seller_company = ""
+    seller_company = getattr(doc, "company", "") or ""
     if doc.pos_profile:
         pos_profile = frappe.get_doc("POS Profile", doc.pos_profile)
         if not pos_profile.company:
             errors.append(_("POS Profile must have a company assigned"))
         else:
-            seller_company = pos_profile.company
+            seller_company = seller_company or pos_profile.company
+
+    # Check Company-level FBR config (endpoint, token, mode)
+    _append_company_fbr_config_errors(errors, seller_company)
 
     if not doc.custom_province:
         errors.append(_("Seller Province is required for FBR submission"))
@@ -215,7 +231,7 @@ def validate_pos_invoice_fbr(doc, errors):
 
 def validate_pos_invoice_fields(doc, method=None):
     """Validate POS Invoice FBR fields using server-side hook."""
-    if not is_fbr_enabled():
+    if not is_fbr_enabled(getattr(doc, "company", None)):
         return
     if not doc.custom_submit_to_fbr:
         return
@@ -253,23 +269,28 @@ def get_fbr_warnings(doc):
 def check_fbr_api_status(company=None):
     """Check if FBR API is accessible.
 
-    The token is read from the supplied `company` (Default Company when
-    omitted). See `fbr_e_invoicing.utils._get_pral_token`.
+    The endpoint and token are read from the supplied `company` (Default
+    Company when omitted). See `fbr_e_invoicing.utils._get_fbr_endpoint` and
+    `_get_pral_token`.
     """
     try:
-        from fbr_e_invoicing.utils import _get_pral_token
+        from fbr_e_invoicing.utils import _get_fbr_endpoint, _get_pral_token
 
-        fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
+        api_endpoint = _get_fbr_endpoint(company)
+        if not api_endpoint:
+            return {
+                "status": "error",
+                "message": _("FBR API endpoint not configured on Company {0}").format(
+                    company or _("(default)")
+                ),
+            }
 
-        if not fbr_settings.api_endpoint:
-            return {"status": "error", "message": _("FBR API endpoint not configured")}
-
-        api_endpoint = (fbr_settings.api_endpoint or "").strip()
         healthcheck_url = _resolve_healthcheck_url(api_endpoint)
         token = _get_pral_token(company)
-        verify_ssl = getattr(fbr_settings, "verify_ssl", True)
-        connect_timeout = float(getattr(fbr_settings, "connect_timeout", 5.0))
-        read_timeout = float(getattr(fbr_settings, "read_timeout", 10.0))
+        # These per-site knobs aren't on Setup anymore; keep sensible defaults.
+        verify_ssl = True
+        connect_timeout = 5.0
+        read_timeout = 10.0
 
         headers = {"Accept": "application/json"}
         if token:
@@ -460,7 +481,7 @@ def block_cancel_for_successfully_submitted_fbr_invoice(doc, method=None):
     - custom_fbr_status is Valid (case-insensitive)
     - custom_fbr_invoice_number is present
     """
-    if not is_fbr_enabled():
+    if not is_fbr_enabled(getattr(doc, "company", None)):
         return
     fbr_status = (getattr(doc, "custom_fbr_status", "") or "").strip().lower()
     fbr_invoice_number = (getattr(doc, "custom_fbr_invoice_number", "") or "").strip()
