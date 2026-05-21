@@ -4,15 +4,15 @@ from frappe import _
 
 @frappe.whitelist()
 def get(
-    chart_name=None,
-    chart=None,
-    no_cache=None,
-    filters=None,
-    from_date=None,
-    to_date=None,
-    timespan=None,
-    time_interval=None,
-    heatmap_year=None,
+    chart_name: str | None = None,
+    chart: dict | str | None = None,
+    no_cache: bool | int | str | None = None,
+    filters: list | dict | str | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    timespan: str | None = None,
+    time_interval: str | None = None,
+    heatmap_year: int | str | None = None,
 ):
     """Combined Valid vs Invalid FBR invoice counts across Sales Invoice and POS Invoice.
 
