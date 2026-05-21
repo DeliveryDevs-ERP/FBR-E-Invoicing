@@ -639,7 +639,7 @@ def _count_invoices_by_fbr_status(status, days=None):
 
 
 @frappe.whitelist()
-def get_company_fbr_stats(company):
+def get_company_fbr_stats(company: str):
     """Return FBR-posted invoice counts for a Company, split by doctype.
 
     Counts only successfully-submitted invoices (`custom_fbr_status = "Valid"`).
