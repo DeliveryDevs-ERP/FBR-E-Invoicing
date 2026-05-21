@@ -266,7 +266,7 @@ def get_fbr_warnings(doc):
 
 
 @frappe.whitelist()
-def check_fbr_api_status(company=None):
+def check_fbr_api_status(company: str | None = None):
     """Check if FBR API is accessible.
 
     The endpoint and token are read from the supplied `company` (Default
