@@ -7,12 +7,6 @@ frappe.ui.form.on("FBR E-Invoicing Setup", {
 	},
 
 	fetch_master_data(frm) {
-		const api_endpoint = (frm.doc.api_endpoint || "").trim();
-		if (!api_endpoint) {
-			frappe.msgprint(__("Please save the API Endpoint first."));
-			return;
-		}
-
 		frappe.call({
 			method: "fbr_e_invoicing.utils.run_master_data_sync",
 			freeze: true,
