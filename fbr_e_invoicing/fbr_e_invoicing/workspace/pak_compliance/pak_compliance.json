@@ -1,6 +1,11 @@
 {
- "charts": [],
- "content": "[{\"id\":\"Custom_Block_Setup_Instructions\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Setup Instructions\",\"col\":12}},{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
+ "charts": [
+  {
+   "chart_name": "FBR Invoice Status",
+   "label": "FBR Invoice Status"
+  }
+ ],
+ "content": "[{\"id\":\"Custom_Block_Setup_Instructions\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Setup Instructions\",\"col\":12}},{\"id\":\"Spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_Dashboard\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>FBR Dashboard</b></span>\",\"col\":12}},{\"id\":\"Card_Valid_Last_Week\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"FBR Valid Invoices Last Week\",\"col\":4}},{\"id\":\"Card_Invalid_Last_Week\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"FBR Invalid Invoices Last Week\",\"col\":4}},{\"id\":\"Chart_Invoice_Status\",\"type\":\"chart\",\"data\":{\"chart_name\":\"FBR Invoice Status\",\"col\":12}},{\"id\":\"Spacer_2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Header_1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\",\"col\":12}},{\"id\":\"Card_Settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"Card_Masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"Card_Logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Card_Reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
  "creation": "2026-02-10 12:37:03.113486",
  "custom_blocks": [
   {
@@ -192,11 +197,20 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-16 00:43:22.098083",
+ "modified": "2026-05-21 07:30:00.000000",
  "modified_by": "Administrator",
  "module": "FBR E-Invoicing",
  "name": "Pak Compliance",
- "number_cards": [],
+ "number_cards": [
+  {
+   "label": "Valid Invoices (Last Week)",
+   "number_card_name": "FBR Valid Invoices Last Week"
+  },
+  {
+   "label": "Invalid Invoices (Last Week)",
+   "number_card_name": "FBR Invalid Invoices Last Week"
+  }
+ ],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,

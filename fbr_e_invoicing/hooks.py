@@ -216,7 +216,11 @@ fixtures = [
             [
                 "name",
                 "in",
-                ["FBR E Invoicing POS Invoice", "FBR E Invoicing Sales Invoice"],
+                [
+                    "FBR E Invoicing POS Invoice Client Script",
+                    "FBR E Invoicing Sales Invoice Client Script",
+                    "FBR E Invoicing Company Client Script",
+                ],
             ]
         ],
     },
@@ -227,5 +231,22 @@ fixtures = [
     {
         "dt": "Web Template",
         "filters": [["name", "in", ["E-Invoice QR Code"]]],
+    },
+    {
+        "dt": "Dashboard Chart",
+        "filters": [["name", "in", ["FBR Invoice Status"]]],
+    },
+    {
+        "dt": "Number Card",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                    "FBR Valid Invoices Last Week",
+                    "FBR Invalid Invoices Last Week",
+                ],
+            ]
+        ],
     },
 ]
