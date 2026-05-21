@@ -1,0 +1,16 @@
+[
+ {
+  "chart_name": "FBR Invoice Status",
+  "chart_type": "Custom",
+  "doctype": "Dashboard Chart",
+  "filters_json": "[]",
+  "is_public": 1,
+  "module": "FBR E-Invoicing",
+  "name": "FBR Invoice Status",
+  "number_of_groups": 0,
+  "source": "FBR Invoice Status",
+  "timeseries": 0,
+  "type": "Pie",
+  "use_report_chart": 0
+ }
+]

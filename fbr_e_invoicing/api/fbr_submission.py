@@ -354,38 +354,26 @@ def submit_to_fbr_api(
 ):
     """Submit payload to FBR API via HTTP POST and return structured result.
 
-    The API endpoint and connection settings come from `FBR E-Invoicing Setup`
-    (global), while the PRAL Authorization Token is read from the supplied
-    `company`'s `custom_fbr_authorization_token` so each company posts under
-    its own credentials. When `company` is omitted, the Default Company's
-    token is used (with `frappe.conf.PRAL_AUTHORIZATION_TOKEN` as a final
-    fallback) — see `fbr_e_invoicing.utils._get_pral_token`.
+    Both the API endpoint and the PRAL Authorization Token are read from the
+    supplied `company`'s `custom_fbr_api_endpoint` and
+    `custom_fbr_authorization_token`, so each company posts to its own
+    endpoint (sandbox vs production) under its own credentials. When
+    `company` is omitted, the Default Company's values are used (with
+    `frappe.conf.PRAL_AUTHORIZATION_TOKEN` as a final token fallback). See
+    `fbr_e_invoicing.utils._get_fbr_endpoint` / `_get_pral_token`.
     """
-    from fbr_e_invoicing.utils import _get_pral_token
+    from fbr_e_invoicing.utils import _get_fbr_endpoint, _get_pral_token
 
-    fbr_settings = frappe.get_single("FBR E-Invoicing Setup")
-    api_endpoint = (fbr_settings.api_endpoint or "").strip()
+    api_endpoint = _get_fbr_endpoint(company)
     token = _get_pral_token(company)
+    company_label = company or "(default)"
 
     if not api_endpoint:
         return {
             "success": False,
-            "error": "FBR API endpoint not configured in 'FBR E-Invoicing Setup'.",
-            "status_code": None,
-            "data": {},
-            "api_version": "",
-            "retryable": True,
-            "failure_type": "config_error",
-        }
-
-    if not token:
-        company_label = company or "(no company)"
-        return {
-            "success": False,
             "error": (
-                f"FBR PRAL Authorization Token is not set on Company "
-                f"'{company_label}'. Open the Company form and fill in "
-                f"'FBR PRAL Authorization Token'."
+                f"FBR API Endpoint is not set on Company '{company_label}'. "
+                f"Open the Company form and fill in 'API Endpoint' on the FBR tab."
             ),
             "status_code": None,
             "data": {},
@@ -394,9 +382,25 @@ def submit_to_fbr_api(
             "failure_type": "config_error",
         }
 
-    verify_ssl = getattr(fbr_settings, "verify_ssl", True)
-    connect_timeout = float(getattr(fbr_settings, "connect_timeout", 10.0))
-    read_timeout = float(getattr(fbr_settings, "read_timeout", 30.0))
+    if not token:
+        return {
+            "success": False,
+            "error": (
+                f"FBR PRAL Authorization Token is not set on Company "
+                f"'{company_label}'. Open the Company form and fill in "
+                f"'PRAL Authorization Token' on the FBR tab."
+            ),
+            "status_code": None,
+            "data": {},
+            "api_version": "",
+            "retryable": True,
+            "failure_type": "config_error",
+        }
+
+    # Per-site network knobs are no longer on Setup; use sensible defaults.
+    verify_ssl = True
+    connect_timeout = 10.0
+    read_timeout = 30.0
     timeout = (connect_timeout, read_timeout)
 
     headers = {

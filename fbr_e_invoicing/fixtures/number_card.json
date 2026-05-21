@@ -1,0 +1,24 @@
+[
+ {
+  "color": "#29CD42",
+  "doctype": "Number Card",
+  "is_public": 1,
+  "label": "Valid Invoices (Last Week)",
+  "method": "fbr_e_invoicing.utils.get_fbr_valid_invoice_count_last_week",
+  "module": "FBR E-Invoicing",
+  "name": "FBR Valid Invoices Last Week",
+  "show_percentage_stats": 0,
+  "type": "Custom"
+ },
+ {
+  "color": "#FF5858",
+  "doctype": "Number Card",
+  "is_public": 1,
+  "label": "Invalid Invoices (Last Week)",
+  "method": "fbr_e_invoicing.utils.get_fbr_invalid_invoice_count_last_week",
+  "module": "FBR E-Invoicing",
+  "name": "FBR Invalid Invoices Last Week",
+  "show_percentage_stats": 0,
+  "type": "Custom"
+ }
+]
