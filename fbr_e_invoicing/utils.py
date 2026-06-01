@@ -17,15 +17,50 @@ FBR_HS_CODE_URL = "https://gw.fbr.gov.pk/pdi/v1/itemdesccode"
 FBR_UOM_URL = "https://gw.fbr.gov.pk/pdi/v1/uom"
 
 
-def _get_pral_token():
-    auth_token = None
-    if frappe.db.exists("DocType", "FBR E-Invoicing Setup"):
-        auth_token = frappe.db.get_single_value(
-            "FBR E-Invoicing Setup", "pral_authorization_token"
-        )
-    if not auth_token:
-        auth_token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
-    return (auth_token or "").strip()
+def _resolve_company(company=None):
+    """Pick the company to read FBR config from.
+
+    When `company` is supplied (the common path for invoice posting), use it.
+    Otherwise fall back to the Default Company from Global Defaults — used by
+    global flows such as master-data sync.
+    """
+    return company or frappe.defaults.get_global_default("company")
+
+
+def _get_company_fbr_field(company, fieldname):
+    """Read a custom FBR field off the resolved Company, safely."""
+    target = _resolve_company(company)
+    if not target:
+        return None
+    if not frappe.db.has_column("Company", fieldname):
+        return None
+    try:
+        return frappe.db.get_value("Company", target, fieldname)
+    except Exception:
+        return None
+
+
+def _get_pral_token(company=None):
+    """Return the PRAL Authorization Token for the resolved Company.
+
+    Resolution: named Company → Default Company → `frappe.conf.PRAL_AUTHORIZATION_TOKEN`.
+    """
+    token = _get_company_fbr_field(company, "custom_fbr_authorization_token")
+    if not token:
+        token = frappe.conf.get("PRAL_AUTHORIZATION_TOKEN")
+    return (token or "").strip()
+
+
+def _get_fbr_endpoint(company=None):
+    """Return the FBR API endpoint for the resolved Company."""
+    endpoint = _get_company_fbr_field(company, "custom_fbr_api_endpoint")
+    return (endpoint or "").strip()
+
+
+def _get_fbr_mode(company=None):
+    """Return the FBR Mode (Sandbox Testing / Production) for the resolved Company."""
+    mode = _get_company_fbr_field(company, "custom_fbr_mode")
+    return (mode or "").strip()
 
 
 def _has_setup_field(fieldname):
@@ -34,6 +69,19 @@ def _has_setup_field(fieldname):
     try:
         return bool(frappe.get_meta("FBR E-Invoicing Setup").has_field(fieldname))
     except Exception:
+        return False
+
+
+def is_fbr_enabled(company=None):
+    """Return True only if FBR is enabled on the resolved Company.
+
+    Used as the kill switch in validation entry points. When off, all FBR
+    validations for that company are skipped.
+    """
+    value = _get_company_fbr_field(company, "custom_fbr_enabled")
+    try:
+        return bool(int(value or 0))
+    except (TypeError, ValueError):
         return False
 
 
@@ -370,6 +418,83 @@ def run_post_migrate_sync():
     """Post-migration sync for static Province and Pakistan tax setup."""
     populate_provinces()
     _ensure_pakistan_tax_accounts_and_templates()
+    _migrate_legacy_fbr_setup_fields_to_default_company()
+
+
+# Map legacy FBR E-Invoicing Setup Singles field -> Company custom field column
+_LEGACY_FBR_SETUP_FIELD_MIGRATIONS = {
+    "pral_authorization_token": "custom_fbr_authorization_token",
+    "api_endpoint": "custom_fbr_api_endpoint",
+    "mode": "custom_fbr_mode",
+    "enabled": "custom_fbr_enabled",
+}
+
+
+def _migrate_legacy_fbr_setup_fields_to_default_company():
+    """Move legacy Setup-level FBR config onto the Default Company.
+
+    The following FBR E-Invoicing Setup Singles values are moved onto the
+    Default Company's matching custom field, then deleted:
+
+      pral_authorization_token -> Company.custom_fbr_authorization_token
+      api_endpoint             -> Company.custom_fbr_api_endpoint
+      mode                     -> Company.custom_fbr_mode
+      enabled                  -> Company.custom_fbr_enabled
+
+    Idempotent: only copies into a Company field that is currently empty/zero,
+    and removes the Singles row regardless so subsequent migrates do nothing.
+    Runs from the `after_migrate` hook so Custom Field columns are guaranteed
+    to exist by the time we write to them.
+    """
+    default_company = frappe.defaults.get_global_default("company")
+    if not default_company or not frappe.db.exists("Company", default_company):
+        return
+
+    for legacy_field, company_field in _LEGACY_FBR_SETUP_FIELD_MIGRATIONS.items():
+        try:
+            rows = frappe.db.sql(
+                "SELECT `value` FROM `tabSingles` "
+                "WHERE `doctype` = 'FBR E-Invoicing Setup' "
+                "AND `field` = %s",
+                (legacy_field,),
+                as_list=True,
+            )
+        except Exception:
+            frappe.log_error(
+                frappe.get_traceback(),
+                f"FBR setup migration: read of legacy Singles row '{legacy_field}' failed",
+            )
+            continue
+
+        if not rows:
+            continue
+
+        legacy_value = (rows[0][0] or "").strip()
+
+        if legacy_value and frappe.db.has_column("Company", company_field):
+            existing = frappe.db.get_value("Company", default_company, company_field)
+            existing_str = (str(existing).strip() if existing is not None else "")
+            # Don't clobber a value already set on the Company.
+            if not existing_str or existing_str == "0":
+                frappe.db.set_value(
+                    "Company", default_company, company_field, legacy_value
+                )
+
+        try:
+            frappe.db.sql(
+                "DELETE FROM `tabSingles` "
+                "WHERE `doctype` = 'FBR E-Invoicing Setup' "
+                "AND `field` = %s",
+                (legacy_field,),
+            )
+        except Exception:
+            frappe.log_error(
+                frappe.get_traceback(),
+                f"FBR setup migration: cleanup of legacy Singles row '{legacy_field}' failed",
+            )
+
+    frappe.clear_cache(doctype="FBR E-Invoicing Setup")
+    frappe.clear_cache(doctype="Company")
 
 
 def _ensure_pakistan_tax_accounts_and_templates():
@@ -396,8 +521,8 @@ def _ensure_pakistan_tax_accounts_and_templates():
         )
 
 
-def is_api_key_valid():
-    auth_token = _get_pral_token()
+def is_api_key_valid(company=None):
+    auth_token = _get_pral_token(company)
 
     if not auth_token:
         return False
@@ -411,7 +536,10 @@ def is_api_key_valid():
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            frappe.db.set_single_value("FBR E-Invoicing Setup", "is_api_token_valid", 1)
+            if _has_setup_field("is_api_token_valid"):
+                frappe.db.set_single_value(
+                    "FBR E-Invoicing Setup", "is_api_token_valid", 1
+                )
             return True
         if response.status_code == 401:
             return False
@@ -430,30 +558,117 @@ def get_fbr_setup_status():
     if not allowed_roles.intersection(user_roles):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-    api_endpoint = (
-        frappe.db.get_single_value("FBR E-Invoicing Setup", "api_endpoint") or ""
-    ).strip()
-    token = (
-        frappe.db.get_single_value("FBR E-Invoicing Setup", "pral_authorization_token") or ""
-    ).strip()
     master_data_retrieved = (
         frappe.db.get_single_value("FBR E-Invoicing Setup", "master_data_retrieved")
         if _has_setup_field("master_data_retrieved")
         else 0
     )
 
-    endpoint_missing = not api_endpoint
-    token_missing = not token
     try:
         master_data_missing = int(master_data_retrieved or 0) != 1
     except (TypeError, ValueError):
         master_data_missing = True
 
+    companies_missing_province = []
+    if frappe.db.has_column("Company", "custom_province"):
+        companies_missing_province = frappe.get_all(
+            "Company",
+            filters={"custom_province": ["in", ["", None]]},
+            pluck="name",
+        )
+    province_missing = bool(companies_missing_province)
+
+    default_company = frappe.defaults.get_global_default("company") or ""
+
+    endpoint_missing = not _get_fbr_endpoint(default_company) if default_company else True
+    token_missing = not _get_pral_token(default_company) if default_company else True
+    enabled_missing = not is_fbr_enabled(default_company) if default_company else True
+
     return {
+        "default_company": default_company,
         "endpoint_missing": endpoint_missing,
         "token_missing": token_missing,
+        "enabled_missing": enabled_missing,
         "master_data_missing": master_data_missing,
-        "show_instructions": endpoint_missing or token_missing or master_data_missing,
+        "province_missing": province_missing,
+        "companies_missing_province": companies_missing_province,
+        "show_instructions": (
+            endpoint_missing
+            or token_missing
+            or enabled_missing
+            or master_data_missing
+            or province_missing
+        ),
+    }
+
+
+@frappe.whitelist()
+def get_fbr_valid_invoice_count_last_week():
+    """Combined Valid invoice count across SI + POS submitted in the last 7 days.
+
+    Used by the `Valid Invoices (Last Week)` Number Card on the Pak Compliance
+    workspace.
+    """
+    return _count_invoices_by_fbr_status("Valid", days=7)
+
+
+@frappe.whitelist()
+def get_fbr_invalid_invoice_count_last_week():
+    """Combined Invalid invoice count across SI + POS submitted in the last 7 days.
+
+    Used by the `Invalid Invoices (Last Week)` Number Card on the Pak Compliance
+    workspace.
+    """
+    return _count_invoices_by_fbr_status("Invalid", days=7)
+
+
+def _count_invoices_by_fbr_status(status, days=None):
+    """Sum of Sales Invoice + POS Invoice rows with the given FBR status.
+
+    If `days` is given, only invoices with `posting_date` within the last that
+    many days are counted.
+    """
+    filters = {"custom_fbr_status": status, "docstatus": 1}
+    if days:
+        cutoff = frappe.utils.add_days(frappe.utils.nowdate(), -int(days))
+        filters["posting_date"] = [">=", cutoff]
+
+    si = frappe.db.count("Sales Invoice", filters=filters)
+    pos = frappe.db.count("POS Invoice", filters=filters)
+    return (si or 0) + (pos or 0)
+
+
+@frappe.whitelist()
+def get_company_fbr_stats(company: str):
+    """Return FBR-posted invoice counts for a Company, split by doctype.
+
+    Counts only successfully-submitted invoices (`custom_fbr_status = "Valid"`).
+    Used by the Company form's FBR Stats HTML field.
+    """
+    if not company:
+        return {"sales_invoice": 0, "pos_invoice": 0, "total": 0}
+
+    sales_invoice = frappe.db.count(
+        "Sales Invoice",
+        filters={
+            "company": company,
+            "custom_fbr_status": "Valid",
+            "docstatus": 1,
+        },
+    )
+    pos_invoice = frappe.db.count(
+        "POS Invoice",
+        filters={
+            "company": company,
+            "custom_fbr_status": "Valid",
+            "docstatus": 1,
+        },
+    )
+    return {
+        "company": company,
+        "sales_invoice": sales_invoice,
+        "pos_invoice": pos_invoice,
+        "total": sales_invoice + pos_invoice,
     }
 
 
