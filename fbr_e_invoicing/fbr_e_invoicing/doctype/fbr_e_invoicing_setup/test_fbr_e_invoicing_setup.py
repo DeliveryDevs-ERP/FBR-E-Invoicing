@@ -19,13 +19,6 @@ class TestFBREInvoicingSetup(FrappeTestCase):
         )
 
     def test_setup_status_behavior_unchanged(self):
-        def get_single_value(_doctype, fieldname):
-            values = {
-                "api_endpoint": "",
-                "pral_authorization_token": "",
-            }
-            return values.get(fieldname)
-
         with patch(
             "fbr_e_invoicing.utils.frappe.get_roles",
             return_value=["System Manager"],
@@ -34,12 +27,30 @@ class TestFBREInvoicingSetup(FrappeTestCase):
             return_value=False,
         ), patch(
             "fbr_e_invoicing.utils.frappe.db.get_single_value",
-            side_effect=get_single_value,
+            return_value=None,
+        ), patch(
+            "fbr_e_invoicing.utils.frappe.db.has_column",
+            return_value=False,
+        ), patch(
+            "fbr_e_invoicing.utils.frappe.defaults.get_global_default",
+            return_value="",
         ):
             status = get_fbr_setup_status()
 
         self.assertEqual(
             set(status.keys()),
-            {"endpoint_missing", "token_missing", "master_data_missing", "show_instructions"},
+            {
+                "default_company",
+                "endpoint_missing",
+                "token_missing",
+                "enabled_missing",
+                "master_data_missing",
+                "province_missing",
+                "companies_missing_province",
+                "show_instructions",
+            },
         )
         self.assertTrue(status["show_instructions"])
+        self.assertTrue(status["endpoint_missing"])
+        self.assertTrue(status["token_missing"])
+        self.assertTrue(status["enabled_missing"])
