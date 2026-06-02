@@ -2,6 +2,10 @@ name: Linters
 
 on:
   pull_request:
+  push:
+    branches:
+      - version-15
+      - version-16
 
 permissions:
   contents: read
