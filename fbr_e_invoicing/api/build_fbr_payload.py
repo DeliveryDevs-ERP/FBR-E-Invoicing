@@ -20,26 +20,26 @@ FBR_MODE_MAP = {
 }
 
 
-def _mode_error_message(configured_mode: str | None = None) -> str:
+def _mode_error_message(company: str | None, configured_mode: str | None = None) -> str:
     configured = (configured_mode or "").strip()
     configured_display = configured or "blank"
+    company_label = company or "(no company)"
     return (
-        "Invalid Mode in 'FBR E-Invoicing Setup'. "
+        f"Invalid FBR Mode on Company '{company_label}'. "
         f"Current value: '{configured_display}'. "
-        f"Please set Mode to '{SANDBOX_MODE_LABEL}' or '{PRODUCTION_MODE_LABEL}'."
+        f"Open the Company form -> FBR tab and set Mode to "
+        f"'{SANDBOX_MODE_LABEL}' or '{PRODUCTION_MODE_LABEL}'."
     )
 
 
-def _resolve_fbr_mode_or_throw() -> str:
-    configured_mode = (
-        frappe.db.get_single_value("FBR E-Invoicing Setup", "mode")
-        if frappe.db.exists("DocType", "FBR E-Invoicing Setup")
-        else ""
-    )
+def _resolve_fbr_mode_or_throw(company: str | None = None) -> str:
+    from fbr_e_invoicing.utils import _get_fbr_mode
+
+    configured_mode = _get_fbr_mode(company)
     normalized_mode = (configured_mode or "").strip().casefold()
     mode = FBR_MODE_MAP.get(normalized_mode)
     if not mode:
-        raise frappe.ValidationError(_mode_error_message(configured_mode))
+        raise frappe.ValidationError(_mode_error_message(company, configured_mode))
     return mode
 
 
@@ -150,7 +150,7 @@ def _get_pos_party_fields(doc):
 def _build_invoice_payload(doc, invoice_type: str, party_fields: dict):
     """Shared payload builder used by Sales Invoice and POS Invoice flows."""
     first_sale_type = doc.items[0].custom_sale_type if doc.items else ""
-    fbr_mode = _resolve_fbr_mode_or_throw()
+    fbr_mode = _resolve_fbr_mode_or_throw(getattr(doc, "company", None))
 
     # --- Invoice-level fields ---
     payload = {
