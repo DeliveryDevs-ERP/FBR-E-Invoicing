@@ -1,0 +1,5 @@
+# Map historical commit authorship to current maintainer identities.
+# Format: New Name <new-email>  <old-email-to-replace>
+# See: https://git-scm.com/docs/gitmailmap
+
+OsamaASidd <osama.siddiqui2017@gmail.com>  <bhavesh.freelancer95863@gmail.com>
