@@ -191,11 +191,11 @@ def _build_invoice_payload(doc, invoice_type: str, party_fields: dict):
             "salesTaxWithheldAtSource": 0.00,
             "extraTax": 0.00,
             "furtherTax": 0.00,
-            "sroScheduleNo": "",
+            "sroScheduleNo": (row.get("custom_sro_schedule_no") or ""),
             "fedPayable": 0.00,
             "discount": abs(flt(row.discount_amount or 0.0)),
             "saleType": payload_sale_type,
-            "sroItemSerialNo": "",
+            "sroItemSerialNo": (row.get("custom_sro_item_serial_no") or ""),
         }
         payload["items"].append(item_entry)
 
