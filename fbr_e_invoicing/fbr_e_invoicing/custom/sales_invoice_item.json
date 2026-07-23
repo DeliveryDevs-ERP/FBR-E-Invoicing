@@ -1,5 +1,29 @@
 {
  "custom_fields": [
+    {
+    "dt": "Sales Invoice Item",
+    "fieldname": "custom_sro_schedule_no",
+    "fieldtype": "Data",
+    "label": "SRO Schedule No",
+    "insert_after": "custom_tax_amount",
+    "in_list_view": 1,
+    "allow_on_submit": 0,
+    "hidden": 0,
+    "print_hide": 0,
+    "name": "Sales Invoice Item-custom_sro_schedule_no"
+},
+{
+    "dt": "Sales Invoice Item",
+    "fieldname": "custom_sro_item_serial_no",
+    "fieldtype": "Data",
+    "label": "SRO Item Serial No",
+    "insert_after": "custom_sro_schedule_no",
+    "in_list_view": 1,
+    "allow_on_submit": 0,
+    "hidden": 0,
+    "print_hide": 0,
+    "name": "Sales Invoice Item-custom_sro_item_serial_no"
+},
   {
    "_assign": null,
    "_comments": null,
