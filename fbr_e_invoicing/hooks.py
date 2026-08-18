@@ -27,15 +27,20 @@ doc_events = {
     "Company": {
         # Keep only on_update so ERPNext can create core chart/default accounts first.
         "on_update": "fbr_e_invoicing.coa_setup.overrides.company.on_company_update_setup_pakistan",
+        "validate": "fbr_e_invoicing.api.pra_validation.auto_fill_sandbox_token",
     },
     "Sales Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.calculate_fbr_custom_taxes",
         "before_submit": [
             "fbr_e_invoicing.api.fbr_validation.validate_fbr_fields",
             "fbr_e_invoicing.api.fbr_validation.force_today_posting_date",
+            "fbr_e_invoicing.api.pra_validation.validate_pra_fields",
         ],
         "before_cancel": "fbr_e_invoicing.api.fbr_validation.block_cancel_for_successfully_submitted_fbr_invoice",
-        "on_cancel": "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
+        "on_cancel": [
+            "fbr_e_invoicing.api.fbr_validation.cleanup_fbr_queue_on_cancel",
+            "fbr_e_invoicing.api.pra_queue.cleanup_pra_queue_on_cancel",
+        ],
     },
     "POS Invoice": {
         "validate": "fbr_e_invoicing.api.fbr_validation.calculate_fbr_custom_taxes",
@@ -57,9 +62,12 @@ doctype_list_js = {
 # ---------------
 
 scheduler_events = {
-    # Process FBR queue every 15 minutes
+    # Process FBR/PRA queues every 15 minutes
     "cron": {
-        "*/15 * * * *": ["fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled"]
+        "*/15 * * * *": [
+            "fbr_e_invoicing.api.fbr_queue.process_fbr_queue_scheduled",
+            "fbr_e_invoicing.api.pra_queue.process_pra_queue_scheduled",
+        ]
     },
     # Cleanup old logs and queue items daily at 2 AM
     # "daily": [
@@ -117,7 +125,12 @@ scheduler_events = {
 
 # Custom fields that should be searchable
 search_fields = {
-    "Sales Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
+    "Sales Invoice": [
+        "custom_fbr_invoice_number",
+        "custom_fbr_status",
+        "custom_pra_invoice_number",
+        "custom_pra_status",
+    ],
     "POS Invoice": ["custom_fbr_invoice_number", "custom_fbr_status"],
 }
 
@@ -135,6 +148,19 @@ dashboard_charts = [
         "chart_type": "Donut",
         "doctype": "FBR Queue",
         "source": "FBR Queue",
+    },
+    {
+        "chart_name": "PRA Submissions",
+        "chart_type": "Line",
+        "doctype": "PRA Logs",
+        "filters_json": '{"status": "Success"}',
+        "source": "PRA Logs",
+    },
+    {
+        "chart_name": "PRA Queue Status",
+        "chart_type": "Donut",
+        "doctype": "PRA Queue",
+        "source": "PRA Queue",
     },
 ]
 
@@ -181,8 +207,8 @@ after_sync = "fbr_e_invoicing.install.after_sync"
 after_migrate = ["fbr_e_invoicing.utils.run_post_migrate_sync"]
 # before_uninstall = "fbr_e_invoicing.uninstall.before_uninstall"
 
-# Backup hook - include FBR data in backups
-include_in_backup = ["FBR Logs", "FBR Queue"]
+# Backup hook - include FBR/PRA data in backups
+include_in_backup = ["FBR Logs", "FBR Queue", "PRA Logs", "PRA Queue"]
 
 # User Data Protection
 # --------------------

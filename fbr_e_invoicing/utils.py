@@ -85,6 +85,64 @@ def is_fbr_enabled(company=None):
         return False
 
 
+PRA_SANDBOX_URL = "https://ims.pral.com.pk/ims/sandbox/api/Live/PostData"
+PRA_PRODUCTION_URL = "https://ims.pral.com.pk/ims/production/api/Live/PostData"
+# Fixed/shared sandbox token published in PRA's POS Component & eIMS User Manual.
+PRA_SANDBOX_TOKEN = "24d8fab3-f2e9-398f-ae17-b387125ec4a2"
+
+PRA_PAYMENT_MODE_MAP = {
+    "Cash": 1,
+    "Card": 2,
+    "Gift Voucher": 3,
+    "Loyalty Card": 4,
+    "Mixed": 5,
+    "Cheque": 6,
+}
+
+
+def _get_pra_pos_id(company=None):
+    """Return the PRA POS Registration Number for the resolved Company."""
+    pos_id = _get_company_fbr_field(company, "custom_pra_pos_id")
+    return (pos_id or "").strip()
+
+
+def _get_pra_mode(company=None):
+    """Return the PRA Mode (Sandbox Testing / Production) for the resolved Company."""
+    mode = _get_company_fbr_field(company, "custom_pra_mode")
+    return (mode or "").strip()
+
+
+def _get_pra_token(company=None):
+    """Return the PRA Bearer token for the resolved Company.
+
+    Falls back to PRA's fixed shared sandbox token (from the manual) when in
+    Sandbox mode and no company-specific token is set, so sandbox testing
+    works without any per-company setup.
+    """
+    token = (_get_company_fbr_field(company, "custom_pra_access_token") or "").strip()
+    if not token and _get_pra_mode(company) != "Production":
+        token = PRA_SANDBOX_TOKEN
+    return token
+
+
+def _get_pra_endpoint(company=None):
+    """Return the fixed PRA IMS endpoint for the resolved Company's mode."""
+    return PRA_PRODUCTION_URL if _get_pra_mode(company) == "Production" else PRA_SANDBOX_URL
+
+
+def is_pra_enabled(company=None):
+    """Return True only if PRA is enabled on the resolved Company.
+
+    Used as the kill switch in validation/reporting entry points. When off,
+    all PRA validations and auto-reporting for that company are skipped.
+    """
+    value = _get_company_fbr_field(company, "custom_pra_enabled")
+    try:
+        return bool(int(value or 0))
+    except (TypeError, ValueError):
+        return False
+
+
 def sync_hs_codes():
     auth_token = _get_pral_token()
     if not auth_token:
@@ -164,6 +222,97 @@ def sync_hs_codes():
     except Exception as e:
         # Log other python errors
         frappe.log_error(f"Sync Logic Error: {str(e)}", "HS Code Sync Failed")
+        print(f"Logic Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
+
+
+@frappe.whitelist()
+def sync_pra_pct_codes():
+    """Populate PRA PCT Code from the same FBR master-data endpoint used by
+    sync_hs_codes(). PCT (Pakistan Customs Tariff) and FBR's HS Code are the
+    same national classification scheme, and PRA's manual gives no
+    PRA-specific master endpoint for it - this is the only real source.
+    """
+    auth_token = _get_pral_token()
+    if not auth_token:
+        return {
+            "success": False,
+            "status_code": None,
+            "response": "PRAL Access token not found. Skipping Sync.",
+        }
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+    }
+    try:
+        response = requests.get(FBR_HS_CODE_URL, headers=headers, timeout=30)
+        if response.status_code != 200:
+            frappe.log_error(
+                f"FBR API Error [{response.status_code}]: {response.text}",
+                "PRA PCT Code Sync Failed",
+            )
+            return {
+                "success": False,
+                "status_code": response.status_code,
+                "response": response.text,
+            }
+
+        data = response.json()
+        inserted_count = 0
+        updated_count = 0
+        for item in data:
+            pct_code = item.get("hS_CODE")
+            description = item.get("description")
+            if not pct_code:
+                continue
+
+            if frappe.db.exists("PRA PCT Code", pct_code):
+                frappe.db.set_value(
+                    "PRA PCT Code",
+                    pct_code,
+                    "description",
+                    description,
+                    update_modified=False,
+                )
+                updated_count += 1
+            else:
+                frappe.get_doc(
+                    {
+                        "doctype": "PRA PCT Code",
+                        "code_number": pct_code,
+                        "description": description,
+                    }
+                ).insert(ignore_permissions=True)
+                inserted_count += 1
+
+        print(
+            f"Successfully synced {len(data)} PRA PCT Codes. "
+            f"Inserted: {inserted_count}, Updated: {updated_count}."
+        )
+        return {
+            "success": True,
+            "status_code": response.status_code,
+            "response": (
+                f"Successfully synced {len(data)} PRA PCT Codes. "
+                f"Inserted: {inserted_count}, Updated: {updated_count}."
+            ),
+        }
+    except requests.exceptions.RequestException as e:
+        frappe.log_error(f"FBR API Error: {str(e)}", "PRA PCT Code Sync Failed")
+        print(f"API Error: {str(e)}")
+        return {
+            "success": False,
+            "status_code": None,
+            "response": str(e),
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Sync Logic Error: {str(e)}", "PRA PCT Code Sync Failed")
         print(f"Logic Error: {str(e)}")
         return {
             "success": False,
