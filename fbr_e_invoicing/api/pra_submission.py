@@ -30,6 +30,152 @@ def _normalize_datetime_for_db(value):
         return None
 
 
+WRONG_TAX_CATEGORY_MESSAGE = "Tax category should be Punjab for PRA posting"
+
+
+@frappe.whitelist()
+def bulk_submit_invoices(docnames: list[str] | str):
+    """Queue multiple Sales Invoices for PRA submission from the list view."""
+    if isinstance(docnames, str):
+        try:
+            docnames = json.loads(docnames)
+        except Exception:
+            docnames = [docnames]
+
+    if not isinstance(docnames, list):
+        frappe.throw(_("docnames must be a list or JSON array"))
+
+    unique_docnames = list(set([str(name).strip() for name in docnames if name]))
+    if not unique_docnames:
+        return {"queued_count": 0, "messages": ["No valid document names provided."]}
+
+    invoices = frappe.get_all(
+        "Sales Invoice",
+        filters={"name": ["in", unique_docnames]},
+        fields=[
+            "name",
+            "docstatus",
+            "company",
+            "tax_category",
+            "custom_pra_status",
+            "custom_pra_invoice_number",
+        ],
+    )
+
+    invoice_map = {row.name: row for row in invoices}
+    results = {
+        "queued": [],
+        "drafts_skipped": [],
+        "cancelled_skipped": [],
+        "already_submitted_skipped": [],
+        "wrong_tax_category_skipped": [],
+        "failed_to_queue": [],
+    }
+    failed_to_queue_details = []
+    company_pra_tax_category = {}
+
+    from fbr_e_invoicing.api.pra_queue import add_to_queue
+
+    for docname in unique_docnames:
+        doc = invoice_map.get(docname)
+        if not doc:
+            reason = "Not found"
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
+            continue
+
+        if doc.docstatus == 0:
+            results["drafts_skipped"].append(docname)
+            continue
+        if doc.docstatus == 2:
+            results["cancelled_skipped"].append(docname)
+            continue
+        if doc.docstatus != 1:
+            reason = f"Unsupported document status: {doc.docstatus}"
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
+            continue
+
+        if (
+            str(doc.custom_pra_status or "").strip().lower() == "success"
+            or str(doc.custom_pra_invoice_number or "").strip()
+        ):
+            results["already_submitted_skipped"].append(docname)
+            continue
+
+        if doc.company not in company_pra_tax_category:
+            company_pra_tax_category[doc.company] = frappe.db.get_value(
+                "Company", doc.company, "custom_pra_tax_category"
+            )
+        pra_tax_category = company_pra_tax_category[doc.company]
+
+        if not pra_tax_category or (doc.tax_category or "").strip() != pra_tax_category.strip():
+            frappe.db.set_value(
+                "Sales Invoice",
+                docname,
+                "custom_pra_status",
+                WRONG_TAX_CATEGORY_MESSAGE,
+                update_modified=False,
+            )
+            results["wrong_tax_category_skipped"].append(docname)
+            continue
+
+        try:
+            queue_result = add_to_queue(
+                doctype="Sales Invoice", docname=docname, status="Pending"
+            )
+            if queue_result.get("success"):
+                results["queued"].append(docname)
+            else:
+                reason = str(queue_result.get("error") or "Unknown error")
+                results["failed_to_queue"].append(f"{docname} ({reason})")
+                failed_to_queue_details.append({"name": docname, "error": reason})
+        except Exception as e:
+            reason = str(e)
+            results["failed_to_queue"].append(f"{docname} ({reason})")
+            failed_to_queue_details.append({"name": docname, "error": reason})
+
+    if results["queued"]:
+        try:
+            from fbr_e_invoicing.api.pra_queue import process_queue
+
+            process_queue(limit=len(results["queued"]))
+        except Exception as e:
+            frappe.log_error(
+                f"Error triggering background processing: {str(e)}", "PRA Bulk Submit"
+            )
+
+    msg = []
+    if results["queued"]:
+        msg.append(f"Successfully queued {len(results['queued'])} invoices.")
+    if results["drafts_skipped"]:
+        msg.append(f"Skipped {len(results['drafts_skipped'])} Draft invoices.")
+    if results["cancelled_skipped"]:
+        msg.append(f"Skipped {len(results['cancelled_skipped'])} Cancelled invoices.")
+    if results["already_submitted_skipped"]:
+        msg.append(
+            f"Skipped {len(results['already_submitted_skipped'])} already submitted invoices."
+        )
+    if results["wrong_tax_category_skipped"]:
+        msg.append(
+            f"Skipped {len(results['wrong_tax_category_skipped'])} invoices: {WRONG_TAX_CATEGORY_MESSAGE}."
+        )
+    if results["failed_to_queue"]:
+        msg.append(f"Failed to queue {len(results['failed_to_queue'])} invoices.")
+
+    return {
+        "queued_count": len(results["queued"]),
+        "results": results,
+        "draft_invoices": list(results["drafts_skipped"]),
+        "cancelled_invoices": list(results["cancelled_skipped"]),
+        "already_submitted_invoices": list(results["already_submitted_skipped"]),
+        "wrong_tax_category_invoices": list(results["wrong_tax_category_skipped"]),
+        "failed_invoices": failed_to_queue_details,
+        "queue_route": "/app/pra-queue",
+        "message": " ".join(msg),
+    }
+
+
 @frappe.whitelist()
 def submit_single_pra_invoice(
     doctype: str,
